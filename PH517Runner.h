@@ -19,6 +19,7 @@ public:
   bool run();
 private:
   InputOutput io;
+  DataSample dataSample;
 };
 
 #endif

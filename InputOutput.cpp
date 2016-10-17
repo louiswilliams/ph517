@@ -7,26 +7,29 @@
 
 bool InputOutput::setup() {
 
+  bool setupOkay = true;
   // Set up SPI port for CAN bus
   Wire.begin();
-
-  // Setup BT LE module
-  if (!_btSerial.begin(_debug)) {
-    Serial.println("Failed to init BT module");
-    return false;
-  }
-  // if (!_btSerial.factoryReset()) {
-  //   Serial.println("Could not factory reset"); 
-  //   return false;
-  // }
-  _btSerial.echo(false);
-  _btSerial.info();
 
   // Attach engine servo to the PWM pin
   _engineServo.attach(ENGINE_PIN);
   _engineServo.write(0);
 
-  return true;
+  // Setup BT LE module
+  if (!_btSerial.begin(_debug)) {
+    Serial.println("Failed to init BT module");
+    setupOkay = false;
+  } else {
+    _btSerial.echo(false);
+    _btSerial.info();
+  }
+
+  if (CAN_OK != _can.begin(CAN_500KBPS)) {
+    Serial.println("Failed to init CAN bus shield");
+    setupOkay = false;
+  }
+
+  return setupOkay;
 }
 
 // Send engine acceleration value between 0 and 255
