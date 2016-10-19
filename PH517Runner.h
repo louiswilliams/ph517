@@ -12,14 +12,20 @@
 
 class PH517Runner {
 public:
-  PH517Runner(bool debug = false);
-  // Run setup
-  bool setup();
-  // Run, only returns on error
-  bool run();
+  PH517Runner() {};
+  PH517Runner(InputOutput& io);
+  // Step forward once. Returns true on successful completion
+  bool step();
+  // Collect data from hardware into the inputs structure 
+  void collectInputs(DataInputs& inputs);
+  // Process inputs and return outputs from control block
+  void processInputs(const DataInputs& inputs, DataOutputs& outputs);
+  // Actuate values to hardware components
+  void sendOutputs(const DataOutputs& outputs);
 private:
-  InputOutput io;
-  DataSample dataSample;
+  InputOutput _io;  
+  DataInputs _inputs;
+  DataOutputs _outputs;
 };
 
 #endif

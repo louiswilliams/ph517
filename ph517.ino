@@ -3,16 +3,18 @@
 
 #include "PH517Runner.h"
 
-PH517Runner runner;
+InputOutput io(PH_DEBUG);
+PH517Runner runner(io);
+
 void setup() {
-  Serial.begin(9600);
-  if (!runner.setup()) {
+  Serial.begin(115200);
+  if (!io.setup()) {
     Serial.println("Failed to setup");
   }
 }
 
 void loop() {
-  runner.run();
+  runner.step();
 }
 
 
@@ -25,5 +27,5 @@ void __assert(const char *__func, const char *__file, int __lineno, const char *
     Serial.println(__sexp);
     Serial.flush();
     // abort program execution.
-    abort();
+    abort();  
 }
