@@ -10,5 +10,6 @@ The following libraries must be installed in the [Arduino library directory](htt
 
 - [Adafruit BluefruitLE nRF51](https://github.com/adafruit/Adafruit_BluefruitLE_nRF51)
 - [MCP CAN-BUS Shield Library](https://github.com/Seeed-Studio/CAN_BUS_Shield)
+- [Arduhdlc HDLC Library](https://github.com/jarkko-hautakorpi/Arduhdlc)
 
 Louis Williams, 2016

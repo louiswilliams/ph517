@@ -35,8 +35,12 @@ void PH517Runner::collectInputs(DataInputs& inputs) {
   inputs.modeSwitches = _io.readModeSwitches();
 
   _io.getBattData(inputs.batt);
-  _io.getEngineData(inputs.engine);
   _io.getMotorData(inputs.motor); 
+}
+
+// Parse incoming 
+void PH517Runner::setEngineData(const uint8_t* data, uint16_t length) {
+  _io.getEngineDataFromBuffer(data, length, _inputs.engine);
 }
 
 // Process inputs and return outputs from control block

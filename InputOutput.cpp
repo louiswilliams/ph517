@@ -5,6 +5,16 @@
 **/
 #include "InputOutput.h"
 
+// CAN receive buffer
+const uint8_t canBufLen = 8;
+uint8_t canBuf[canBufLen];
+
+// Define interrupt handler
+bool canAvailable = false;
+void canISR() {
+  canAvailable = true;
+}
+
 bool InputOutput::setup() {
 
   bool setupOkay = true;
@@ -30,7 +40,7 @@ bool InputOutput::setup() {
   _engineServo.write(0);
 
   // TODO: Choose a different baud rate
-  MICRO_HWSERIAL.begin(19200);
+  ENGINE_HWSERIAL.begin(19200);
   // TODO: Determine actual baud rate
   BATT_HWSERIAL.begin(9600);
 
@@ -47,6 +57,9 @@ bool InputOutput::setup() {
     Serial.println("Failed to init CAN bus shield");
     setupOkay = false;
   }
+
+  // Can Interrupt 
+  attachInterrupt(CAN_INT, canISR, FALLING);
 
   return setupOkay;
 }
@@ -72,16 +85,42 @@ uint16_t InputOutput::readBattTemp() {
   return analogRead(BATT_TEMP_IN);
 }
 
-// Gets engine data from the Arduino Micro and stores in engineData
-void InputOutput::getEngineData(EngineData& engineData) {
-  if (MICRO_HWSERIAL.available()) {
-    // Process input
-  }
-}
-
 // Gets motor data from CAN and stores in motorData
 void InputOutput::getMotorData(MotorData& motorData) {
   // If CAN flag set from ISR routine, then read data
+  if (canAvailable) {
+    canAvailable = false;
+
+    while (CAN_MSGAVAIL == _can.checkReceive()) {
+      _can.readMsgBuf(&canBufLen, canBuf);
+      uint32_t id = _can.getCanId();
+
+      // Parse data based on which address it came from
+      if (id == CAN_ADDR1) {
+        motorData.rpm = canBuf[1] + (canBuf[0] << 8);
+
+        // Convert to non-negative, normalized values
+        uint8_t temp = ((int8_t) canBuf[2]) + 40;
+        uint8_t controllerTemp = ((int8_t)canBuf[3]) + 40;
+
+        // Assumptions made from the motor manual values
+        assert(temp >= 0);
+        assert(temp <= 240);
+        assert(controllerTemp >= 0);
+        assert(controllerTemp <= 240);
+
+        motorData.temp = temp; 
+        motorData.controllerTemp = controllerTemp;
+        motorData.rmsCurrent = canBuf[5] + (canBuf[4] << 8);
+        motorData.capVoltage = canBuf[7] + (canBuf[6] << 8);
+      } else if (id == CAN_ADDR2) {
+        motorData.statorFreq = canBuf[1] + (canBuf[0] << 8);
+      } else {
+        Serial.print("Received message from unknown ID: ");
+        Serial.println(id, HEX);
+      }
+    }
+  }
 }
 
 // Gets battery data from the SOC meter (UART) and stores in battData
@@ -123,4 +162,15 @@ void InputOutput::sendMotorRegen(uint16_t output) {
   Wire.write((output % 16) << 4);            // Lower data bits          (D3.D2.D1.D0.x.x.x.x)
   Wire.endTransmission();
   TWBR = twbrback;
+}
+
+// Parse engine data from raw data and store in engineData
+static void getEngineDataFromBuffer(const uint8_t* data, uint16_t length,
+                                    EngineData& engineData) {
+  if (length == sizeof(engineData)) {
+    engineData.rpm = data[1] + (data[0] << 8);
+    engineData.fuelRate = data[3] + (data[2] << 8);
+  } else {
+    Serial.println("Received data of unknown length: " + length);
+  }
 }

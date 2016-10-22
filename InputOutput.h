@@ -9,6 +9,7 @@
 #define _InputOutput_H
 
 #include <Arduino.h>
+#include <assert.h>
 #include <Servo.h>
 #include <Wire.h>
 
@@ -16,6 +17,7 @@
 #include <Adafruit_BLE.h>
 #include <Adafruit_BluefruitLE_UART.h>
 #include "mcp_can.h"
+#include "Arduhdlc.h"
 
 // Digital pins
 #define ENGINE_PIN 4
@@ -35,12 +37,17 @@
 #define MOTOR_REGEN_ADDR 0x63
 // Digital Analog Converter command
 #define CMD_WRITE_DAC 0x40
-// CAN bus over SPI
+// CAN interrupt and chip-select pins
+#define CAN_INT digitalPinToInterrupt(2)
 #define CAN_CS 9
+#define CAN_ADDR1 0x601
+#define CAN_ADDR2 0x602
 // Serial ports
-#define MICRO_HWSERIAL Serial1
+#define ENGINE_HWSERIAL Serial1
 #define BT_HWSERIAL Serial2
 #define BATT_HWSERIAL Serial3
+// HLDC Constants
+#define HLDC_MAX_FRAME_LEN 32
 
 // Battery data from SOC meter
 typedef struct {
@@ -91,6 +98,14 @@ typedef struct {
 
 } DataOutputs;
 
+// CAN Interrupt Handler
+extern bool canAvailable;
+void canISR(void);
+
+// Engine data HDLC object and handlers
+extern Arduhdlc hdlc;
+void hdlcSendChar(uint8_t data);
+void hdldRecvFrame(const uint8_t* data, uint16_t length);
 
 class InputOutput {
 public:
@@ -112,8 +127,8 @@ public:
   // Returns a value between 0 and 1023
   uint16_t readBrake();
 
-  // Gets engine data from the Arduino Micro and stores in engineData
-  void getEngineData(EngineData& engineData);
+  // Used to copy data directly from the HDLC frame buffer. Parses the raw data
+  void setEngineData(const uint16_t* data, uint16_t length);
 
   // Gets motor data from CAN and stores in motorData
   void getMotorData(MotorData& motorData);
@@ -133,7 +148,14 @@ public:
 
   // Send 12-bit brake command over I2C bus. Values between 0 and 4096
   void sendMotorRegen(uint16_t output);
+
+  // Parse engine data from raw data and store in engineData. We don't do this
+  // in the runner because that's not the job of the runner.
+  static void getEngineDataFromBuffer(const uint8_t* data, uint16_t length,
+                                      EngineData& engineData);
+
 private:
+
   bool _debug;
   Adafruit_BluefruitLE_UART _btSerial; // Bluetooth LE module
   Servo _engineServo;

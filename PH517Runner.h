@@ -22,6 +22,11 @@ public:
   void processInputs(const DataInputs& inputs, DataOutputs& outputs);
   // Actuate values to hardware components
   void sendOutputs(const DataOutputs& outputs);
+
+
+  // Callback from HDLC link when engine data is received
+  void setEngineData(const uint8_t* data, uint16_t length);
+
 private:
   InputOutput _io;  
   DataInputs _inputs;
