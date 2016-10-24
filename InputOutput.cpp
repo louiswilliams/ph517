@@ -6,8 +6,9 @@
 #include "InputOutput.h"
 
 // CAN receive buffer
-const uint8_t canBufLen = 8;
-uint8_t canBuf[canBufLen];
+#define CAN_BUF_LEN 8
+uint8_t canBufLen = CAN_BUF_LEN;
+uint8_t canBuf[CAN_BUF_LEN];
 
 // Define interrupt handler
 bool canAvailable = false;
@@ -165,7 +166,7 @@ void InputOutput::sendMotorRegen(uint16_t output) {
 }
 
 // Parse engine data from raw data and store in engineData
-static void getEngineDataFromBuffer(const uint8_t* data, uint16_t length,
+static void InputOutput::getEngineDataFromBuffer(const uint8_t* data, uint16_t length,
                                     EngineData& engineData) {
   if (length == sizeof(engineData)) {
     engineData.rpm = (data[0] << 8) + data[1];
