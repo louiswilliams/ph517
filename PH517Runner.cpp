@@ -52,7 +52,7 @@ void PH517Runner::processInputs(const DataInputs& inputs, DataOutputs& outputs) 
 // Actuate values to hardware components
 void PH517Runner::sendOutputs(const DataOutputs& outputs) {
   // _io.sendEngineAccel(outputs.engineServo);
-  _io.sendEngineAccel(outputs.motorAccel);
+  _io.sendMotorAccel(outputs.motorAccel);
   // TODO: Send Motor accel/regen
   // TODO: Swtich LEDs
   // TODO: Switch relays
