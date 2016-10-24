@@ -37,7 +37,7 @@ bool InputOutput::setup() {
 
   // Attach engine servo to the PWM pin
   _engineServo.attach(ENGINE_PIN);
-  _engineServo.write(0);
+  _engineServo.write(129);
 
   // TODO: Choose a different baud rate
   ENGINE_HWSERIAL.begin(19200);
@@ -66,7 +66,7 @@ bool InputOutput::setup() {
 
 // Send engine acceleration value between 0 and 255
 void InputOutput::sendEngineAccel(uint8_t value) {
-  int mapped = map(value, 0, 255, 36, 129);
+  int mapped = map(value, 0, 255, 129, 36);
   _engineServo.write(mapped);
 }
 
@@ -168,8 +168,8 @@ void InputOutput::sendMotorRegen(uint16_t output) {
 static void getEngineDataFromBuffer(const uint8_t* data, uint16_t length,
                                     EngineData& engineData) {
   if (length == sizeof(engineData)) {
-    engineData.rpm = data[1] + (data[0] << 8);
-    engineData.fuelRate = data[3] + (data[2] << 8);
+    engineData.rpm = (data[0] << 8) + data[1];
+    engineData.fuelRate = (data[2] << 8) + data[3];
   } else {
     Serial.println("Received data of unknown length: " + length);
   }

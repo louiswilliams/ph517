@@ -52,7 +52,7 @@ void loop() {
   //numBangs = ((60000/75)*numBangs)/2;
   numBangs = (1000/x)*120;
 
-  // Send in big-endian order
+  // Send in big-endian order over serial port
   char data[4] = {0};
   data[0] = numBangs >> 8;
   data[1] = numBangs & 0xFF;
