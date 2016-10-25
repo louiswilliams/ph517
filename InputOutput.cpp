@@ -21,17 +21,32 @@ bool InputOutput::setup() {
   bool setupOkay = true;
   // Setup digital pins
   // Switches
-  for (int i=SWITCH_IN_START; i <= SWITCH_IN_END; i++) {
-    pinMode(i, INPUT);
-  }
+  pinMode(BUTTON_1, INPUT);
+  digitalWrite(BUTTON_1, HIGH);
+  pinMode(BUTTON_2, INPUT);
+  digitalWrite(BUTTON_2, HIGH);
+  pinMode(BUTTON_3, INPUT);
+  digitalWrite(BUTTON_3, HIGH);
+  pinMode(BUTTON_4, INPUT);
+  digitalWrite(BUTTON_4, HIGH);
+
   // Switch LEDs
-  for (int i=SWITCH_LED_START; i <= SWITCH_LED_END; i++) {
-    pinMode(i, OUTPUT);
-  }
+  pinMode(BUTTON_LED_1, OUTPUT);
+  digitalWrite(BUTTON_LED_1, HIGH);
+  pinMode(BUTTON_LED_2, OUTPUT);
+  digitalWrite(BUTTON_LED_2, HIGH);
+  pinMode(BUTTON_LED_3, OUTPUT);
+  digitalWrite(BUTTON_LED_3, HIGH);
+  pinMode(BUTTON_LED_4, OUTPUT);
+  digitalWrite(BUTTON_LED_4, HIGH);
+
   // Relays
   for (int i=RELAY_PIN_START; i <= RELAY_PIN_END; i++) {
     pinMode(i, OUTPUT);
+    digitalWrite(i, HIGH);
   }
+  digitalWrite(RELAY_DCDC, LOW);
+  digitalWrite(RELAY_MOTORDIR, LOW);
 
   // Set up SPI port for CAN bus
   Wire.begin();
@@ -134,9 +149,10 @@ void InputOutput::getBattData(BattData& battData) {
 // Return switch mask 
 uint8_t InputOutput::readModeSwitches() {
   uint8_t mask = 0;
-  for (int i=0; i <= (SWITCH_IN_END-SWITCH_IN_START); i++) {
-    mask = mask + (digitalRead(i)<<i);
-  }
+  mask += ((digitalRead(BUTTON_1) == LOW));
+  mask += ((digitalRead(BUTTON_2) == LOW)<<1);
+  mask += ((digitalRead(BUTTON_3) == LOW)<<2);
+  mask += ((digitalRead(BUTTON_4) == LOW)<<3);
   return mask;
 }
 

@@ -21,15 +21,23 @@
 
 // Digital pins
 #define ENGINE_PIN 4
-#define SWITCH_IN_START 32
-#define SWITCH_IN_END 35
-#define SWITCH_LED_START 36
-#define SWITCH_LED_END 39
+#define BUTTON_1 33 // White
+#define BUTTON_2 35 // Green
+#define BUTTON_3 37 // Blue
+#define BUTTON_4 39 // Red
+#define BUTTON_LED_1 32 // White
+#define BUTTON_LED_2 34 // Green
+#define BUTTON_LED_3 36 // Blue
+#define BUTTON_LED_4 38 // Red
 #define RELAY_PIN_START 22
 #define RELAY_PIN_END 27
+#define RELAY_DCDC 24
+#define RELAY_MOTORDIR 27
+#define RELAY_CRANK 22
+#define RELAY_POWER 23
 // Analog pins
-#define THROTTLE_IN A1
-#define THROTTLE_COMP A2
+#define THROTTLE_COMP A1
+#define THROTTLE_IN A2
 #define BRAKE_IN A3
 #define BATT_TEMP_IN A4
 // I2C Addresses
