@@ -18,6 +18,8 @@ void setup() {
   Serial.begin(115200);
   if (!io.setup()) {
     Serial.println("Failed to setup");
+  } else {
+    Serial.println("Setup done");
   }
 }
 
