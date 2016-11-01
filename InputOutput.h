@@ -35,6 +35,7 @@
 #define RELAY_MOTORDIR 27
 #define RELAY_CRANK 22
 #define RELAY_POWER 23
+#define BT_MOD 5
 // Analog pins
 #define THROTTLE_COMP A1
 #define THROTTLE_IN A2
@@ -119,7 +120,7 @@ class InputOutput {
 public:
   InputOutput(bool debug = false) :
     _debug(debug),
-    _btSerial(BT_HWSERIAL),
+    _btSerial(BT_HWSERIAL, BT_MOD),
     _can(CAN_CS) {};
 
   // Initialize hardware
