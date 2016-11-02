@@ -25,16 +25,20 @@
 #define BUTTON_2 35 // Green
 #define BUTTON_3 37 // Blue
 #define BUTTON_4 39 // Red
+#define BUTTON(i) (1<<(i-1))
 #define BUTTON_LED_1 32 // White
 #define BUTTON_LED_2 34 // Green
 #define BUTTON_LED_3 36 // Blue
 #define BUTTON_LED_4 38 // Red
 #define RELAY_PIN_START 22
-#define RELAY_PIN_END 27
+#define RELAY_PIN_END 29
 #define RELAY_DCDC 24
-#define RELAY_MOTORDIR 27
+#define RELAY_REVERSE 27
+#define RELAY_MOTORDIR 28
+#define RELAY_MOTOR 29
 #define RELAY_CRANK 22
 #define RELAY_POWER 23
+#define RELAY_COOLANT 25
 #define BT_MOD 5
 // Analog pins
 #define THROTTLE_COMP A1
@@ -57,6 +61,11 @@
 #define BATT_HWSERIAL Serial3
 // HLDC Constants
 #define HLDC_MAX_FRAME_LEN 32
+// Extrema
+#define ENGINE_SERVO_MIN 129
+#define ENGINE_SERVO_MAX 36
+#define THROTTLE_MIN 875
+#define THROTTLE_MAX 560
 
 // Battery data from SOC meter
 typedef struct {
@@ -104,7 +113,9 @@ typedef struct {
   uint8_t engineServo; // [0-255]
   uint8_t modeLEDs;
   uint8_t thermalRelays;
-
+  bool reverseActive;
+  bool crankActive;
+  bool enginePoweroffActive;
 } DataOutputs;
 
 // CAN Interrupt Handler

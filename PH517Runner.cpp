@@ -52,34 +52,45 @@ void PH517Runner::setEngineData(const uint8_t* data, uint16_t length) {
 
 // Process inputs and return outputs from control block
 void PH517Runner::processInputs(const DataInputs& inputs, DataOutputs& outputs) {
-  outputs.engineServo = map(inputs.throttle, 875, 560, 0, 255);
-  outputs.motorAccel = map(inputs.throttle, 875, 560, 0, 4095);
+  outputs.engineServo = map(inputs.throttle, THROTTLE_MIN, THROTTLE_MAX, 0, 255);
+  outputs.motorAccel = map(inputs.throttle, THROTTLE_MIN, THROTTLE_MAX, 0, 4095);
 
-  // Starter
-  // Button 1
-  if (inputs.modeSwitches & 1) {
-    digitalWrite(RELAY_POWER, LOW);
-    digitalWrite(BUTTON_LED_1, LOW);
+  // White
+  if (inputs.modeSwitches & BUTTON(1)) {
+    outputs.crankActive = true;
+    outputs.modeLEDs &= (0xFF - BUTTON(1));
   } else {    
-    digitalWrite(RELAY_POWER, HIGH);
-    digitalWrite(BUTTON_LED_1, HIGH);
+    outputs.crankActive = false;
+    outputs.modeLEDs |= BUTTON(1);
   }
-  if (inputs.modeSwitches & 1<<1) {
-    digitalWrite(BUTTON_LED_2, LOW);
-  } else {    
-    digitalWrite(BUTTON_LED_2, HIGH);
+  // Green
+  if (inputs.modeSwitches & BUTTON(2)) {
+    outputs.modeLEDs &= (0xFF - BUTTON(2));
+  } else {
+    // If button was just pressed
+    if (outputs.modeLEDs & BUTTON(2) == 0) {
+      // If reverse is active, deactivate it
+      if (outputs.reverseActive) {
+        outputs.reverseActive = false;
+      } else {
+        outputs.modeLEDs |= BUTTON(2);
+        outputs.reverseActive = true;
+      }
+    }
   }
-  if (inputs.modeSwitches & 1<<2) {
-    digitalWrite(BUTTON_LED_3, LOW);
+  // Blue
+  if (inputs.modeSwitches & BUTTON(3)) {
+    outputs.modeLEDs &= (0xFF - BUTTON(3));
   } else {    
-    digitalWrite(BUTTON_LED_3, HIGH);
+    outputs.modeLEDs |= BUTTON(3);
   }
-  if (inputs.modeSwitches & 1<<3) {
-    digitalWrite(RELAY_CRANK, LOW);
-    digitalWrite(BUTTON_LED_4, LOW);
+  // Red
+  if (inputs.modeSwitches & BUTTON(4)) {
+    outputs.enginePoweroffActive = true;
+    outputs.modeLEDs &= (0xFF - BUTTON(4));
   } else {    
-    digitalWrite(RELAY_CRANK, HIGH);
-    digitalWrite(BUTTON_LED_4, HIGH);
+    outputs.enginePoweroffActive = false;
+    outputs.modeLEDs |= BUTTON(4);
   }
 
 
@@ -93,6 +104,51 @@ void PH517Runner::processInputs(const DataInputs& inputs, DataOutputs& outputs) 
 void PH517Runner::sendOutputs(const DataOutputs& outputs) {
   _io.sendEngineAccel(outputs.engineServo);
   _io.sendMotorAccel(outputs.motorAccel);
+
+  // Button LEDs
+  if (_outputs.modeLEDs & BUTTON(1)) {
+    digitalWrite(BUTTON_LED_1, HIGH);
+  } else {
+    digitalWrite(BUTTON_LED_1, LOW);
+  }
+  if (_outputs.modeLEDs & BUTTON(2)) {
+    digitalWrite(BUTTON_LED_2, LOW);
+  } else {
+    digitalWrite(BUTTON_LED_2, HIGH);
+  }
+  if (_outputs.modeLEDs & BUTTON(3)) {
+    digitalWrite(BUTTON_LED_3, LOW);
+  } else {
+    digitalWrite(BUTTON_LED_3, HIGH);    
+  }
+  if (_outputs.modeLEDs & BUTTON(4)) {
+    digitalWrite(BUTTON_LED_4, HIGH);
+  } else {
+    digitalWrite(BUTTON_LED_4, LOW);
+  }
+
+  // Engine poweroff
+  if (_outputs.enginePoweroffActive) {
+    digitalWrite(RELAY_POWER, LOW);
+  } else {
+    digitalWrite(RELAY_POWER, HIGH);
+  }
+  // Reverse
+  if (outputs.reverseActive) {
+    digitalWrite(RELAY_MOTORDIR, LOW);
+    digitalWrite(RELAY_REVERSE, LOW);
+  } else {
+    digitalWrite(RELAY_MOTORDIR, HIGH);
+    digitalWrite(RELAY_REVERSE, HIGH);
+  }
+  // Starter
+  if (outputs.crankActive) {
+    digitalWrite(RELAY_CRANK, LOW);
+  } else {
+    digitalWrite(RELAY_CRANK, HIGH);
+  }
+
+
   // TODO: Send Motor accel/regen
   // TODO: Swtich LEDs
   // TODO: Switch relays

@@ -46,14 +46,13 @@ bool InputOutput::setup() {
     digitalWrite(i, HIGH);
   }
   digitalWrite(RELAY_DCDC, LOW);
-  digitalWrite(RELAY_MOTORDIR, LOW);
 
   // Set up SPI port for CAN bus
   Wire.begin();
 
   // Attach engine servo to the PWM pin
   _engineServo.attach(ENGINE_PIN);
-  _engineServo.write(129);
+  _engineServo.write(ENGINE_SERVO_MIN);
 
   // TODO: Choose a different baud rate
   ENGINE_HWSERIAL.begin(19200);
@@ -74,15 +73,19 @@ bool InputOutput::setup() {
     setupOkay = false;
   }
 
-  // Can Interrupt 
+  // CAN Interrupt 
   attachInterrupt(CAN_INT, canISR, FALLING);
+
+  // Wait to turn on motor controller
+  delay(2000);
+  digitalWrite(RELAY_MOTOR, LOW);
 
   return setupOkay;
 }
 
 // Send engine acceleration value between 0 and 255
 void InputOutput::sendEngineAccel(uint8_t value) {
-  int mapped = map(value, 0, 255, 129, 36);
+  int mapped = map(value, 0, 255, ENGINE_SERVO_MIN, ENGINE_SERVO_MIN);
   _engineServo.write(mapped);
 }
 
