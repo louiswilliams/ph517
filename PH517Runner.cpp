@@ -48,6 +48,9 @@ void PH517Runner::collectInputs(DataInputs& inputs) {
 // Parse incoming 
 void PH517Runner::setEngineData(const uint8_t* data, uint16_t length) {
   _io.getEngineDataFromBuffer(data, length, _inputs.engine);
+
+  _io.setChar(ENGINE_RPM, _inputs.engine.rpm);
+  _io.setChar(ENGINE_FUEL, _inputs.engine.fuelRate);
 }
 
 // Process inputs and return outputs from control block

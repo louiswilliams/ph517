@@ -10,6 +10,9 @@
 uint8_t canBufLen = CAN_BUF_LEN;
 uint8_t canBuf[CAN_BUF_LEN];
 
+#define CHAR_BUF_LEN 8
+char charBuf[CHAR_BUF_LEN];
+
 // Car GATT service UUID
 uint8_t service_uuid[] = {0xB3, 0x4A, 0x10, 0x00, 0x23, 0x03, 0x47, 0xC5, 0x83, 0xD5, 0x86, 0x83, 0x62, 0xDE, 0xEB, 0xA6};
 
@@ -144,6 +147,7 @@ void InputOutput::getMotorData(MotorData& motorData) {
       // Parse data based on which address it came from
       if (id == CAN_ADDR1) {
         motorData.rpm = canBuf[1] + (canBuf[0] << 8);
+        setChar(MOTOR_RPM, motorData.rpm);
 
         // Convert to non-negative, normalized values
         uint8_t temp = ((int8_t) canBuf[2]) + 40;
@@ -156,15 +160,24 @@ void InputOutput::getMotorData(MotorData& motorData) {
         assert(controllerTemp <= 240);
 
         motorData.temp = temp; 
+        setChar(MOTOR_TEMP, motorData.temp);
+        
         motorData.controllerTemp = controllerTemp;
         motorData.rmsCurrent = canBuf[5] + (canBuf[4] << 8);
+        setChar(MOTOR_CURRENT, motorData.rmsCurrent);
+        
         motorData.capVoltage = canBuf[7] + (canBuf[6] << 8);
+        setChar(MOTOR_VOLTAGE, motorData.capVoltage);
+
       } else if (id == CAN_ADDR2) {
         motorData.statorFreq = canBuf[1] + (canBuf[0] << 8);
-      } else {
+        setChar(MOTOR_STATOR, motorData.statorFreq);
+      } 
+      else {
         Serial.print("Received message from unknown ID: ");
         Serial.println(id, HEX);
       }
+
     }
   }
 }
@@ -209,6 +222,15 @@ void InputOutput::sendMotorRegen(uint16_t output) {
   Wire.write((output % 16) << 4);            // Lower data bits          (D3.D2.D1.D0.x.x.x.x)
   Wire.endTransmission();
   TWBR = twbrback;
+}
+
+void InputOutput::setChar(uint8_t index, uint16_t value) {
+  String v = String(value);
+  v.toCharArray(charBuf, CHAR_BUF_LEN);
+  bool isOK = _gatt->setChar(index, charBuf);
+  if (!isOK) {
+    Serial.println("Error setting char value for " + index);
+  }
 }
 
 // Parse engine data from raw data and store in engineData

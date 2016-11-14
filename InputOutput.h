@@ -68,6 +68,21 @@
 #define THROTTLE_MIN 875
 #define THROTTLE_MAX 560
 
+// BT GATT Characteristic indexes
+#define BATT_VOLTAGE 1
+#define BATT_CURRENT 2
+#define BATT_AMPHRS 3
+#define BATT_SOC 4
+#define BATT_TIME 5
+#define BATT_TEMP 6
+#define MOTOR_RPM 7
+#define MOTOR_TEMP 8
+#define MOTOR_CURRENT 9
+#define MOTOR_VOLTAGE 10
+#define MOTOR_STATOR 11
+#define ENGINE_RPM 12
+#define ENGINE_FUEL 13
+
 // Battery data from SOC meter
 typedef struct {
   uint16_t voltage; // x0.01V
@@ -170,6 +185,9 @@ public:
 
   // Send 12-bit brake command over I2C bus. Values between 0 and 4096
   void sendMotorRegen(uint16_t output);
+  
+  // Set BT GATT service characteristic 
+  void setChar(uint8_t index, uint16_t value);
 
   // Parse engine data from raw data and store in engineData. We don't do this
   // in the runner because that's not the job of the runner.
