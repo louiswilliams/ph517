@@ -15,6 +15,7 @@
 
 #include <Adafruit_ATParser.h>
 #include <Adafruit_BLE.h>
+#include <Adafruit_BLEGatt.h>
 #include <Adafruit_BluefruitLE_UART.h>
 #include "mcp_can.h"
 #include "Arduhdlc.h"
@@ -132,6 +133,7 @@ public:
   InputOutput(bool debug = false) :
     _debug(debug),
     _btSerial(BT_HWSERIAL, BT_MOD),
+    _gatt(new Adafruit_BLEGatt(_btSerial)),
     _can(CAN_CS) {};
 
   // Initialize hardware
@@ -178,6 +180,7 @@ private:
 
   bool _debug;
   Adafruit_BluefruitLE_UART _btSerial; // Bluetooth LE module
+  Adafruit_BLEGatt* _gatt;
   Servo _engineServo;
   MCP_CAN _can;
 };

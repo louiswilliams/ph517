@@ -10,6 +10,9 @@
 uint8_t canBufLen = CAN_BUF_LEN;
 uint8_t canBuf[CAN_BUF_LEN];
 
+// Car GATT service UUID
+uint8_t service_uuid[] = {0xB3, 0x4A, 0x10, 0x00, 0x23, 0x03, 0x47, 0xC5, 0x83, 0xD5, 0x86, 0x83, 0x62, 0xDE, 0xEB, 0xA6};
+
 // Define interrupt handler
 bool canAvailable = false;
 void canISR() {
@@ -63,7 +66,31 @@ bool InputOutput::setup() {
   if (!_btSerial.begin(_debug)) {
     Serial.println("Failed to init BT module");
     setupOkay = false;
-  } else {
+  } else {    
+    // If switch 1 is held through startup, reset BT GATT service
+    if (digitalRead(BUTTON_1) == LOW) {
+      _btSerial.echo(true);
+      _gatt->addService(service_uuid);
+
+      _gatt->addCharacteristic(0x1001, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "batt_voltage", NULL);
+      _gatt->addCharacteristic(0x1002, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "batt_current", NULL);
+      _gatt->addCharacteristic(0x1003, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "batt_amphrs", NULL);
+      _gatt->addCharacteristic(0x1004, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "batt_soc", NULL);
+      _gatt->addCharacteristic(0x1005, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "batt_time", NULL);
+      _gatt->addCharacteristic(0x1006, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "batt_temp", NULL);
+      _gatt->addCharacteristic(0x1007, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "motor_rpm", NULL);
+      _gatt->addCharacteristic(0x1008, 0x10, 1, 1, BLE_DATATYPE_INTEGER, "motor_temp", NULL);
+      _gatt->addCharacteristic(0x1009, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "motor_current", NULL);
+      _gatt->addCharacteristic(0x100A, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "motor_voltage", NULL);
+      _gatt->addCharacteristic(0x100B, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "motor_stator", NULL);
+      _gatt->addCharacteristic(0x100C, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "engine_rpm", NULL);
+      _gatt->addCharacteristic(0x100D, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "engine_fuel", NULL);
+      
+      _btSerial.println("ATZ");
+      _btSerial.waitForOK();
+      Serial.println("Setup done");
+
+    }
     _btSerial.echo(false);
     _btSerial.info();
   }
