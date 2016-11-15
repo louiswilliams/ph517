@@ -15,7 +15,7 @@
 
 #define VERBOSE_MODE false
 #define FACTORY_RESET false
-#define SETUP false
+#define SETUP true
 
 SoftwareSerial bluefruitSS = SoftwareSerial(BT_RX,BT_TX); // RX, TX
 Adafruit_BluefruitLE_UART ble(bluefruitSS, BT_MOD, BT_CTS, BT_RTS); // MOD, CTS, RTS
@@ -34,7 +34,7 @@ void setup(void) {
 
   Serial.begin(115200);
   
-  if ( !ble.begin(VERBOSE_MODE) ) {
+  if ( !ble.begin(VERBOSE_MODE, 57600) ) {
     error(F("Couldn't find Bluefruit, make sure it's in CoMmanD mode & check wiring?"));
   }
 
