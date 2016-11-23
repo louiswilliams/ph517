@@ -85,7 +85,7 @@ bool InputOutput::setup() {
 
 // Send engine acceleration value between 0 and 255
 void InputOutput::sendEngineAccel(uint8_t value) {
-  int mapped = map(value, 0, 255, ENGINE_SERVO_MIN, ENGINE_SERVO_MIN);
+  int mapped = map(value, 0, 255, ENGINE_SERVO_MIN, ENGINE_SERVO_MAX);
   _engineServo.write(mapped);
 }
 
