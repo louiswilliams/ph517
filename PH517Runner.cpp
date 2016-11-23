@@ -69,17 +69,26 @@ void PH517Runner::processInputs(const DataInputs& inputs, DataOutputs& outputs) 
   }
   // Green
   if (inputs.modeSwitches & BUTTON(2)) {
-    outputs.modeLEDs &= (0xFF - BUTTON(2));
+    Serial.println("Green pressed");
+    if (outputs.reverseActive) {
+      // Disable light if active
+      outputs.modeLEDs &= (0xFF - BUTTON(2));
+    } else {
+      // Enable light if inactive
+      outputs.modeLEDs |= BUTTON(2);
+    }
   } else {
-    // If button was just pressed
-    if (outputs.modeLEDs & BUTTON(2) == 0) {
-      // If reverse is active, deactivate it
-      if (outputs.reverseActive) {
-        outputs.reverseActive = false;
-      } else {
-        outputs.modeLEDs |= BUTTON(2);
-        outputs.reverseActive = true;
-      }
+
+    // If reverse is active and LED is OFF, deactivate reverse
+    if (outputs.reverseActive && !(outputs.modeLEDs & BUTTON(2))) {
+      Serial.println("Deactivating reverse");
+      outputs.reverseActive = false;
+      outputs.modeLEDs &= (0xFF - BUTTON(2));
+    // If reverse is not active and LED is ON, activate
+    } else if (!outputs.reverseActive && (outputs.modeLEDs & BUTTON(2))) {
+      Serial.println("Activating reverse");
+      outputs.modeLEDs |= BUTTON(2);
+      outputs.reverseActive = true;
     }
   }
   // Blue
@@ -116,14 +125,14 @@ void PH517Runner::sendOutputs(const DataOutputs& outputs) {
     digitalWrite(BUTTON_LED_1, LOW);
   }
   if (_outputs.modeLEDs & BUTTON(2)) {
-    digitalWrite(BUTTON_LED_2, LOW);
-  } else {
     digitalWrite(BUTTON_LED_2, HIGH);
+  } else {
+    digitalWrite(BUTTON_LED_2, LOW);
   }
   if (_outputs.modeLEDs & BUTTON(3)) {
-    digitalWrite(BUTTON_LED_3, LOW);
+    digitalWrite(BUTTON_LED_3, HIGH);
   } else {
-    digitalWrite(BUTTON_LED_3, HIGH);    
+    digitalWrite(BUTTON_LED_3, LOW);    
   }
   if (_outputs.modeLEDs & BUTTON(4)) {
     digitalWrite(BUTTON_LED_4, HIGH);
