@@ -1,4 +1,4 @@
-#define __ASSERT_USE_STDERR
+  #define __ASSERT_USE_STDERR
 #define PH_DEBUG true
 
 #include <assert.h>
@@ -39,6 +39,7 @@ void hdlcSendChar(uint8_t data) {
 }
 // Pass data to IO service
 void hdldRecvFrame(const uint8_t* data, uint16_t len) {
+  Serial.println("Received data from micro: " + len);
   runner.setEngineData(data, len);
 }
 // Capture data available on the engine serial line

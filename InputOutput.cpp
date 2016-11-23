@@ -61,39 +61,58 @@ bool InputOutput::setup() {
   _engineServo.write(ENGINE_SERVO_MIN);
 
   // TODO: Choose a different baud rate
-  ENGINE_HWSERIAL.begin(19200);
+  ENGINE_HWSERIAL.begin(ENGINE_BAUD);
   // TODO: Determine actual baud rate
-  BATT_HWSERIAL.begin(9600);
+  BATT_HWSERIAL.begin(BATT_BAUD);
 
   // Setup BT LE module
-  if (!_btSerial.begin(_debug)) {
-    Serial.println("Failed to init BT module");
-    setupOkay = false;
-  } else {    
-    // If switch 1 is held through startup, reset BT GATT service
-    if (digitalRead(BUTTON_1) == LOW) {
-      _btSerial.echo(true);
-      _gatt->addService(service_uuid);
+  Serial.println(F("Setting up Bluefruit. Trying fast baud rate"));
 
-      _gatt->addCharacteristic(0x1001, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "batt_voltage", NULL);
-      _gatt->addCharacteristic(0x1002, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "batt_current", NULL);
-      _gatt->addCharacteristic(0x1003, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "batt_amphrs", NULL);
-      _gatt->addCharacteristic(0x1004, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "batt_soc", NULL);
-      _gatt->addCharacteristic(0x1005, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "batt_time", NULL);
-      _gatt->addCharacteristic(0x1006, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "batt_temp", NULL);
-      _gatt->addCharacteristic(0x1007, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "motor_rpm", NULL);
-      _gatt->addCharacteristic(0x1008, 0x10, 1, 1, BLE_DATATYPE_INTEGER, "motor_temp", NULL);
-      _gatt->addCharacteristic(0x1009, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "motor_current", NULL);
-      _gatt->addCharacteristic(0x100A, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "motor_voltage", NULL);
-      _gatt->addCharacteristic(0x100B, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "motor_stator", NULL);
-      _gatt->addCharacteristic(0x100C, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "engine_rpm", NULL);
-      _gatt->addCharacteristic(0x100D, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "engine_fuel", NULL);
-      
-      _btSerial.println("ATZ");
+  if (!_btSerial.begin(_debug, BT_BAUD_FAST)) {
+
+    Serial.println(F("Trying slow baud"));
+
+    if (!_btSerial.begin(_debug, BT_BAUD)) {
+      Serial.println("Failed to init BT module");
+      setupOkay = false;
+
+    } else {
+      Serial.println(F("Increasing baud rate..."));
+      _btSerial.print(F("AT+BAUDRATE="));
+      _btSerial.print(BT_BAUD_FAST + "\n");
       _btSerial.waitForOK();
-      Serial.println("Setup done");
-
+      _btSerial.println(F("ATZ"));
+      Serial.println(F("Resetting..."));
+      if (!_btSerial.begin(_debug, BT_BAUD_FAST)) {
+        Serial.println(F("Couldn't find Bluefruit"));
+        setupOkay = false;
+      }
     }
+  }
+  if (setupOkay) {
+    _btSerial.echo(true);
+    _gatt->clear();
+    _gatt->addService(service_uuid);
+
+    _gatt->addCharacteristic(0x1001, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "batt_voltage", NULL);
+    _gatt->addCharacteristic(0x1002, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "batt_current", NULL);
+    _gatt->addCharacteristic(0x1003, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "batt_amphrs", NULL);
+    _gatt->addCharacteristic(0x1004, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "batt_soc", NULL);
+    _gatt->addCharacteristic(0x1005, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "batt_time", NULL);
+    _gatt->addCharacteristic(0x1006, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "batt_temp", NULL);
+    _gatt->addCharacteristic(0x1007, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "motor_rpm", NULL);
+    _gatt->addCharacteristic(0x1008, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "motor_temp", NULL);
+    _gatt->addCharacteristic(0x1009, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "motor_current", NULL);
+    _gatt->addCharacteristic(0x100A, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "motor_voltage", NULL);
+    _gatt->addCharacteristic(0x100B, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "motor_stator", NULL);
+    _gatt->addCharacteristic(0x100C, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "engine_rpm", NULL);
+    _gatt->addCharacteristic(0x100D, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "engine_pulses", NULL);
+    _gatt->addCharacteristic(0x100E, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "engine_timeon", NULL);
+    
+    _btSerial.println("ATZ");
+    _btSerial.waitForOK();
+    Serial.println("GATT Setup done");
+
     _btSerial.echo(false);
     _btSerial.info();
   }
@@ -184,7 +203,15 @@ void InputOutput::getMotorData(MotorData& motorData) {
 
 // Gets battery data from the SOC meter (UART) and stores in battData
 void InputOutput::getBattData(BattData& battData) {
+  // If data available, consume all of it
   if (BATT_HWSERIAL.available()) {
+    uint8_t current;
+    
+    // Wait for IDHT message start bit
+    do {
+      current = BATT_HWSERIAL.read();
+    }
+    while (BATT_HWSERIAL.available() && !(current & IDHT));
     // Process input
   }
 }
@@ -234,11 +261,18 @@ void InputOutput::setChar(uint8_t index, uint16_t value) {
 }
 
 // Parse engine data from raw data and store in engineData
+// The data comes in little-endian (machine) order
 static void InputOutput::getEngineDataFromBuffer(const uint8_t* data, uint16_t length,
-                                    EngineData& engineData) {
+                                    EngineData& engineData)
+                                     {
   if (length == sizeof(engineData)) {
-    engineData.rpm = (data[0] << 8) + data[1];
-    engineData.fuelRate = (data[2] << 8) + data[3];
+    memcpy(&engineData, data, length);
+    Serial.println("rpm: " + engineData.rpm);
+    Serial.println("pulses: " + engineData.pulses);
+    Serial.println("timeOn: " + engineData.timeOn);
+    // setChar(ENGINE_RPM, engineData.rpm);
+    // setChar(ENGINE_PULSES, engineData.pulses);
+    // setChar(ENGINE_TIMEON, engineData.timeone);
   } else {
     Serial.println("Received data of unknown length: " + length);
   }

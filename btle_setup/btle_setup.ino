@@ -33,9 +33,23 @@ void setup(void) {
   delay(500);
 
   Serial.begin(115200);
-  
+
+  /* Check if it's using the faster rate. Then use slower rate to change back to the faster rate */
+  Serial.println(F("Setting up Bluefruit. Trying 57600 baud"));
   if ( !ble.begin(VERBOSE_MODE, 57600) ) {
-    error(F("Couldn't find Bluefruit, make sure it's in CoMmanD mode & check wiring?"));
+    Serial.println(F("Trying 9600 baud"));
+    if (!ble.begin(VERBOSE_MODE, 9600)) {
+      error(F("Couldn't find Bluefruit")); 
+    } else {
+      Serial.println(F("Increasing baud rate to 57600"));
+      ble.println(F("AT+BAUDRATE=57600"));
+      ble.waitForOK();
+      ble.println(F("ATZ"));
+      Serial.println(F("Resetting..."));
+      if (!ble.begin(VERBOSE_MODE, 57600)) {
+        error(F("Couldn't find Bluefruit"));
+      }
+    }
   }
 
   Serial.println( F("OK!") );
@@ -61,19 +75,19 @@ void setup(void) {
     gatt.clear();
     gatt.addService(service_uuid);
 
-    gatt.addCharacteristic(0x1001, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "batt_voltage", NULL);
-    gatt.addCharacteristic(0x1002, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "batt_current", NULL);
-    gatt.addCharacteristic(0x1003, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "batt_amphrs", NULL);
-    gatt.addCharacteristic(0x1004, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "batt_soc", NULL);
-    gatt.addCharacteristic(0x1005, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "batt_time", NULL);
-    gatt.addCharacteristic(0x1006, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "batt_temp", NULL);
-    gatt.addCharacteristic(0x1007, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "motor_rpm", NULL);
-    gatt.addCharacteristic(0x1008, 0x10, 1, 1, BLE_DATATYPE_INTEGER, "motor_temp", NULL);
-    gatt.addCharacteristic(0x1009, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "motor_current", NULL);
-    gatt.addCharacteristic(0x100A, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "motor_voltage", NULL);
-    gatt.addCharacteristic(0x100B, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "motor_stator", NULL);
-    gatt.addCharacteristic(0x100C, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "engine_rpm", NULL);
-    gatt.addCharacteristic(0x100D, 0x10, 2, 2, BLE_DATATYPE_INTEGER, "engine_fuel", NULL);
+    gatt.addCharacteristic(0x1001, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "batt_voltage", NULL);
+    gatt.addCharacteristic(0x1002, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "batt_current", NULL);
+    gatt.addCharacteristic(0x1003, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "batt_amphrs", NULL);
+    gatt.addCharacteristic(0x1004, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "batt_soc", NULL);
+    gatt.addCharacteristic(0x1005, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "batt_time", NULL);
+    gatt.addCharacteristic(0x1006, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "batt_temp", NULL);
+    gatt.addCharacteristic(0x1007, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "motor_rpm", NULL);
+    gatt.addCharacteristic(0x1008, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "motor_temp", NULL);
+    gatt.addCharacteristic(0x1009, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "motor_current", NULL);
+    gatt.addCharacteristic(0x100A, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "motor_voltage", NULL);
+    gatt.addCharacteristic(0x100B, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "motor_stator", NULL);
+    gatt.addCharacteristic(0x100C, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "engine_rpm", NULL);
+    gatt.addCharacteristic(0x100D, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "engine_fuel", NULL);
     
     ble.println("ATZ");
     ble.waitForOK();

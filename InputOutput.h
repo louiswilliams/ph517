@@ -60,8 +60,16 @@
 #define ENGINE_HWSERIAL Serial1
 #define BT_HWSERIAL Serial2
 #define BATT_HWSERIAL Serial3
+// Baud rates
+#define ENGINE_BAUD 9600
+#define BT_BAUD 9600
+#define BT_BAUD_FAST 57600
+#define BATT_BAUD 9600
+
 // HLDC Constants
 #define HLDC_MAX_FRAME_LEN 32
+// Batt meter constants
+#define IDHT 128
 // Extrema
 #define ENGINE_SERVO_MIN 129
 #define ENGINE_SERVO_MAX 36
@@ -81,7 +89,8 @@
 #define MOTOR_VOLTAGE 10
 #define MOTOR_STATOR 11
 #define ENGINE_RPM 12
-#define ENGINE_FUEL 13
+#define ENGINE_PULSES 13
+#define ENGINE_TIMEON 14
 
 // Battery data from SOC meter
 typedef struct {
@@ -107,8 +116,9 @@ typedef struct {
 
 // Engine data from Arduino Micro  
 typedef struct {
-  uint16_t rpm;
-  uint16_t fuelRate;
+  uint32_t rpm;
+  uint32_t pulses;
+  uint32_t timeOn;
 } EngineData;
 
 // Inputs
