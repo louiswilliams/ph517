@@ -69,7 +69,6 @@ void PH517Runner::processInputs(const DataInputs& inputs, DataOutputs& outputs) 
   }
   // Green
   if (inputs.modeSwitches & BUTTON(2)) {
-    Serial.println("Green pressed");
     if (outputs.reverseActive) {
       // Disable light if active
       outputs.modeLEDs &= (0xFF - BUTTON(2));
