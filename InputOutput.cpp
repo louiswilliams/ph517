@@ -68,14 +68,14 @@ bool InputOutput::setup() {
   // Setup BT LE module
   Serial.println(F("Setting up Bluefruit. Trying fast baud rate"));
 
-  if (!_btSerial.begin(_debug, BT_BAUD_FAST)) {
+  _btOkay = true;
+  if (!_btSerial.begin(false, BT_BAUD_FAST)) {
 
     Serial.println(F("Trying slow baud"));
 
-    if (!_btSerial.begin(_debug, BT_BAUD)) {
+    if (!_btSerial.begin(false, BT_BAUD)) {
       Serial.println("Failed to init BT module");
-      setupOkay = false;
-
+      _btOkay = false;
     } else {
       Serial.println(F("Increasing baud rate..."));
       _btSerial.print(F("AT+BAUDRATE="));
@@ -83,13 +83,14 @@ bool InputOutput::setup() {
       _btSerial.waitForOK();
       _btSerial.println(F("ATZ"));
       Serial.println(F("Resetting..."));
-      if (!_btSerial.begin(_debug, BT_BAUD_FAST)) {
+      if (!_btSerial.begin(false, BT_BAUD_FAST)) {
         Serial.println(F("Couldn't find Bluefruit"));
-        setupOkay = false;
+        _btOkay = false;
       }
     }
   }
-  if (setupOkay) {
+  setupOkay &= _btOkay;
+  if (_btOkay) {
     _btSerial.echo(true);
     _gatt->clear();
     _gatt->addService(service_uuid);
@@ -113,9 +114,9 @@ bool InputOutput::setup() {
     _btSerial.waitForOK();
     Serial.println("GATT Setup done");
 
-    _btSerial.echo(false);
     _btSerial.info();
   }
+  _btSerial.echo(false);
 
   if (CAN_OK != _can.begin(CAN_500KBPS)) {
     Serial.println("Failed to init CAN bus shield");
@@ -134,7 +135,7 @@ bool InputOutput::setup() {
 
 // Send engine acceleration value between 0 and 255
 void InputOutput::sendEngineAccel(uint8_t value) {
-  int mapped = map(value, 0, 255, ENGINE_SERVO_MIN, ENGINE_SERVO_MAX);
+  int mapped = map(value, 9, 255, ENGINE_SERVO_MIN, ENGINE_SERVO_MAX);
   _engineServo.write(mapped);
 }
 
@@ -216,6 +217,12 @@ void InputOutput::getBattData(BattData& battData) {
   }
 }
 
+void InputOutput::getEngineData(EngineData& engineData) {
+  while (ENGINE_HWSERIAL.available()) {
+    hdlc.charReceiver((char) ENGINE_HWSERIAL.read());
+  }
+}
+
 // Return switch mask 
 uint8_t InputOutput::readModeSwitches() {
   uint8_t mask = 0;
@@ -252,12 +259,14 @@ void InputOutput::sendMotorRegen(uint16_t output) {
 }
 
 void InputOutput::setChar(uint8_t index, uint16_t value) {
-  String v = String(value);
-  v.toCharArray(charBuf, CHAR_BUF_LEN);
-  bool isOK = _gatt->setChar(index, charBuf);
-  if (!isOK) {
-    Serial.println("Error setting char value for " + index);
+  if (_btOkay) {
+    String v = String(value);
+    v.toCharArray(charBuf, CHAR_BUF_LEN);
+    bool isOK = _gatt->setChar(index, charBuf);
   }
+  // if (!isOK) {
+  //   Serial.println("Error setting char value for " + index);
+  // }
 }
 
 // Parse engine data from raw data and store in engineData
@@ -267,9 +276,12 @@ static void InputOutput::getEngineDataFromBuffer(const uint8_t* data, uint16_t l
                                      {
   if (length == sizeof(engineData)) {
     memcpy(&engineData, data, length);
-    Serial.println("rpm: " + engineData.rpm);
-    Serial.println("pulses: " + engineData.pulses);
-    Serial.println("timeOn: " + engineData.timeOn);
+    Serial.print("rpm: ");
+    Serial.println(engineData.rpm, DEC);
+    Serial.print("pulses: ");
+    Serial.println(engineData.pulses, DEC);
+    Serial.print("timeOn: " );
+    Serial.println(engineData.timeOn, DEC); 
     // setChar(ENGINE_RPM, engineData.rpm);
     // setChar(ENGINE_PULSES, engineData.pulses);
     // setChar(ENGINE_TIMEON, engineData.timeone);

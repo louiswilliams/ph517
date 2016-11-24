@@ -43,6 +43,7 @@ void PH517Runner::collectInputs(DataInputs& inputs) {
 
   _io.getBattData(inputs.batt);
   _io.getMotorData(inputs.motor);
+  _io.getEngineData(inputs.engine);
 }
 
 // Parse incoming 

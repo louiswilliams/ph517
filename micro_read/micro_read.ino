@@ -20,22 +20,16 @@ void hdlcSendChar(uint8_t data) {
 void hdldRecvFrame(const uint8_t* data, uint16_t len) {
   if (len == sizeof(EngineFrame)) {
     memcpy(&engineData, data, sizeof(EngineFrame));
-    Serial.println("rpm: " + engineData.rpm);
-    Serial.println("pulses: " + engineData.pulses);
-    Serial.println("timeOn: " + engineData.timeOn);
+    Serial.print("rpm: ");
+    Serial.println(engineData.rpm, DEC);
+    Serial.print("pulses: ");
+    Serial.println(engineData.pulses, DEC);
+    Serial.print("timeOn: " );
+    Serial.println(engineData.timeOn, DEC); 
   } else {
     Serial.println("Received data of length " + len);
   }
 }
-
-//// Capture data available on the engine serial line
-void serialEvent() {
-  while (Serial1.available()) {
-    Serial.println(Serial1.readString());
-//    hdlc.charReceiver((char) Serial1.read());
-  }
-}
-
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
@@ -44,6 +38,10 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
+  delay(1000);
+   while (Serial1.available()) {
+    hdlc.charReceiver((char) Serial1.read());
+  }
 }
 
 

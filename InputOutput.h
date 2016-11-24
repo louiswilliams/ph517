@@ -183,6 +183,9 @@ public:
   // Gets battery data from the SOC meter (UART) and stores in battData
   void getBattData(BattData& battData);
 
+  // Read engine data from the external Arduino
+  void getEngineData(EngineData& EngineData);
+
   // Return switch mask 
   uint8_t readModeSwitches();
 
@@ -207,6 +210,7 @@ public:
 private:
 
   bool _debug;
+  bool _btOkay;
   Adafruit_BluefruitLE_UART _btSerial; // Bluetooth LE module
   Adafruit_BLEGatt* _gatt;
   Servo _engineServo;

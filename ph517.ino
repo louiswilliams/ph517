@@ -37,17 +37,12 @@ void loop() {
 void hdlcSendChar(uint8_t data) {
   ENGINE_HWSERIAL.print((char)data);
 }
-// Pass data to IO service
+
+// Capture data available on the engine serial line
 void hdldRecvFrame(const uint8_t* data, uint16_t len) {
-  Serial.println("Received data from micro: " + len);
   runner.setEngineData(data, len);
 }
-// Capture data available on the engine serial line
-void serialEvent() {
-  while (ENGINE_HWSERIAL.available()) {
-    hdlc.charReceiver((char) ENGINE_HWSERIAL.read());
-  }
-}
+
 
 // We need to handle assertions and log problems
 void __assert(const char *__func, const char *__file, int __lineno, const char *__sexp) {
