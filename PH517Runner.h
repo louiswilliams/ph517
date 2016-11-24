@@ -17,20 +17,20 @@ public:
   // Step forward once. Returns true on successful completion
   bool step();
   // Collect data from hardware into the inputs structure 
-  void collectInputs(DataInputs& inputs);
+  void collectInputs(DataInput& inputs);
   // Process inputs and return outputs from control block
-  void processInputs(const DataInputs& inputs, DataOutputs& outputs);
+  void processInputs(const DataInput& inputs, DataOutput& outputs);
   // Actuate values to hardware components
-  void sendOutputs(const DataOutputs& outputs);
+  void sendOutputs(const DataOutput& outputs);
 
 
   // Callback from HDLC link when engine data is received
-  void setEngineData(const uint8_t* data, uint16_t length);
+  void engineDataReceived(const uint8_t* data, uint16_t length);
 
 private:
   InputOutput _io;  
-  DataInputs _inputs;
-  DataOutputs _outputs;
+  DataInput _inputs;
+  DataOutput _outputs;
 };
 
 #endif

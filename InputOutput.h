@@ -66,8 +66,8 @@
 #define BT_BAUD_FAST 57600
 #define BATT_BAUD 9600
 
-// HLDC Constants
-#define HLDC_MAX_FRAME_LEN 32
+// HDLC Constants
+#define HDLC_MAX_FRAME_LEN 32
 // Batt meter constants
 #define IDHT 128
 // Extrema
@@ -91,6 +91,9 @@
 #define ENGINE_RPM 12
 #define ENGINE_PULSES 13
 #define ENGINE_TIMEON 14
+
+// Error constants
+#define ERR_BT_CONN 1
 
 // Battery data from SOC meter
 typedef struct {
@@ -122,7 +125,8 @@ typedef struct {
 } EngineData;
 
 // Inputs
-typedef struct {
+class DataInput {
+public:
   uint16_t throttle; // [0,1023]
   uint16_t brake; // [0,1023]
   uint16_t battTemp; // [0,1023]
@@ -130,10 +134,19 @@ typedef struct {
   BattData batt;
   EngineData engine;
   MotorData motor;
-} DataInputs;
+
+  // Get switch/LED n, n > 0
+  bool isSwitchPressed(uint8_t i);
+
+  // Parse engine data from raw data and store in engineData. We don't do this
+  // in the runner because that's not the job of the runner.
+  void setEngineData(const uint8_t* data, uint16_t length);
+};
 
 // Outputs
-typedef struct {
+class DataOutput {
+public:
+  int16_t errors;
   uint16_t motorAccel; // [0,4095]
   uint16_t motorRegen; // [0,4095]
   uint8_t engineServo; // [0-255]
@@ -142,7 +155,13 @@ typedef struct {
   bool reverseActive;
   bool crankActive;
   bool enginePoweroffActive;
-} DataOutputs;
+
+  // Enable/disable LED
+  bool isLedOn(uint8_t i);
+  bool setLedOn(uint8_t i, bool on);
+  void setError(uint16_t error);
+  void clearError(uint16_t error);
+};
 
 // CAN Interrupt Handler
 extern bool canAvailable;
@@ -184,7 +203,7 @@ public:
   void getBattData(BattData& battData);
 
   // Read engine data from the external Arduino
-  void getEngineData(EngineData& EngineData);
+  void readEngineData();
 
   // Return switch mask 
   uint8_t readModeSwitches();
@@ -199,13 +218,9 @@ public:
   // Send 12-bit brake command over I2C bus. Values between 0 and 4096
   void sendMotorRegen(uint16_t output);
   
+
   // Set BT GATT service characteristic 
   void setChar(uint8_t index, uint16_t value);
-
-  // Parse engine data from raw data and store in engineData. We don't do this
-  // in the runner because that's not the job of the runner.
-  static void getEngineDataFromBuffer(const uint8_t* data, uint16_t length,
-                                      EngineData& engineData);
 
 private:
 

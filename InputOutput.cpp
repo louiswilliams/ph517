@@ -127,7 +127,7 @@ bool InputOutput::setup() {
   attachInterrupt(CAN_INT, canISR, FALLING);
 
   // Wait to turn on motor controller
-  delay(2000);
+  delay(1000);
   digitalWrite(RELAY_MOTOR, LOW);
 
   return setupOkay;
@@ -217,7 +217,8 @@ void InputOutput::getBattData(BattData& battData) {
   }
 }
 
-void InputOutput::getEngineData(EngineData& engineData) {
+// Reads all data from the serial device, which is passed to the HDLC decoder
+void InputOutput::readEngineData() {
   while (ENGINE_HWSERIAL.available()) {
     hdlc.charReceiver((char) ENGINE_HWSERIAL.read());
   }
@@ -232,7 +233,6 @@ uint8_t InputOutput::readModeSwitches() {
   mask += ((digitalRead(BUTTON_4) == LOW)<<3);
   return mask;
 }
-
 
 // Send 12-bit motor command over I2C bus. Values between 0 and 4096
 void InputOutput::sendMotorAccel(uint16_t output) {
@@ -267,25 +267,4 @@ void InputOutput::setChar(uint8_t index, uint16_t value) {
   // if (!isOK) {
   //   Serial.println("Error setting char value for " + index);
   // }
-}
-
-// Parse engine data from raw data and store in engineData
-// The data comes in little-endian (machine) order
-static void InputOutput::getEngineDataFromBuffer(const uint8_t* data, uint16_t length,
-                                    EngineData& engineData)
-                                     {
-  if (length == sizeof(engineData)) {
-    memcpy(&engineData, data, length);
-    Serial.print("rpm: ");
-    Serial.println(engineData.rpm, DEC);
-    Serial.print("pulses: ");
-    Serial.println(engineData.pulses, DEC);
-    Serial.print("timeOn: " );
-    Serial.println(engineData.timeOn, DEC); 
-    // setChar(ENGINE_RPM, engineData.rpm);
-    // setChar(ENGINE_PULSES, engineData.pulses);
-    // setChar(ENGINE_TIMEON, engineData.timeone);
-  } else {
-    Serial.println("Received data of unknown length: " + length);
-  }
 }

@@ -28,7 +28,7 @@ bool PH517Runner::step() {
 }
 
 // Collect data from hardware into the inputs structure 
-void PH517Runner::collectInputs(DataInputs& inputs) {
+void PH517Runner::collectInputs(DataInput& inputs) {
   inputs.throttle = _io.readThrottle();
   inputs.brake = _io.readBrake();
   inputs.battTemp = _io.readBattTemp();
@@ -41,14 +41,14 @@ void PH517Runner::collectInputs(DataInputs& inputs) {
   // Serial.println(" engine.rpm: " + inputs.engine.rpm);  
   // Serial.println(" engine.fuelRate: " + inputs.engine.fuelRate);  
 
+  _io.readEngineData();
   _io.getBattData(inputs.batt);
   _io.getMotorData(inputs.motor);
-  _io.getEngineData(inputs.engine);
 }
 
 // Parse incoming 
-void PH517Runner::setEngineData(const uint8_t* data, uint16_t length) {
-  _io.getEngineDataFromBuffer(data, length, _inputs.engine);
+void PH517Runner::engineDataReceived(const uint8_t* data, uint16_t length) {
+  _inputs.setEngineData(data, length);
 
   _io.setChar(ENGINE_RPM, _inputs.engine.rpm);
   _io.setChar(ENGINE_PULSES, _inputs.engine.pulses);
@@ -56,54 +56,52 @@ void PH517Runner::setEngineData(const uint8_t* data, uint16_t length) {
 }
 
 // Process inputs and return outputs from control block
-void PH517Runner::processInputs(const DataInputs& inputs, DataOutputs& outputs) {
+void PH517Runner::processInputs(const DataInput& inputs, DataOutput& outputs) {
   outputs.engineServo = map(inputs.throttle, THROTTLE_MIN, THROTTLE_MAX, 0, 255);
   outputs.motorAccel = map(inputs.throttle, THROTTLE_MIN, THROTTLE_MAX, 0, 4095);
 
   // White
-  if (inputs.modeSwitches & BUTTON(1)) {
+  if (inputs.isSwitchPressed(1)) {
     outputs.crankActive = true;
-    outputs.modeLEDs &= (0xFF - BUTTON(1));
+    outputs.setLedOn(1, false);
   } else {    
     outputs.crankActive = false;
-    outputs.modeLEDs |= BUTTON(1);
+    outputs.setLedOn(1, true);
   }
   // Green
-  if (inputs.modeSwitches & BUTTON(2)) {
+  if (inputs.isSwitchPressed(2)) {
     if (outputs.reverseActive) {
       // Disable light if active
-      outputs.modeLEDs &= (0xFF - BUTTON(2));
+      outputs.setLedOn(2, false);
     } else {
       // Enable light if inactive
-      outputs.modeLEDs |= BUTTON(2);
+      outputs.setLedOn(2, true);
     }
   } else {
 
     // If reverse is active and LED is OFF, deactivate reverse
-    if (outputs.reverseActive && !(outputs.modeLEDs & BUTTON(2))) {
-      Serial.println("Deactivating reverse");
+    if (outputs.reverseActive && !(outputs.isLedOn(2))) {
       outputs.reverseActive = false;
-      outputs.modeLEDs &= (0xFF - BUTTON(2));
+      outputs.setLedOn(2, false);
     // If reverse is not active and LED is ON, activate
-    } else if (!outputs.reverseActive && (outputs.modeLEDs & BUTTON(2))) {
-      Serial.println("Activating reverse");
-      outputs.modeLEDs |= BUTTON(2);
+    } else if (!outputs.reverseActive && (outputs.isLedOn(2))) {
+      outputs.setLedOn(2, true);
       outputs.reverseActive = true;
     }
   }
   // Blue
-  if (inputs.modeSwitches & BUTTON(3)) {
-    outputs.modeLEDs &= (0xFF - BUTTON(3));
+  if (inputs.isSwitchPressed(3)) {
+    outputs.setLedOn(3, false);
   } else {    
-    outputs.modeLEDs |= BUTTON(3);
+    outputs.setLedOn(3, true);
   }
   // Red
-  if (inputs.modeSwitches & BUTTON(4)) {
+  if (inputs.isSwitchPressed(4)) {
     outputs.enginePoweroffActive = true;
-    outputs.modeLEDs &= (0xFF - BUTTON(4));
+    outputs.setLedOn(4, false);
   } else {    
     outputs.enginePoweroffActive = false;
-    outputs.modeLEDs |= BUTTON(4);
+    outputs.setLedOn(4, true);
   }
 
 
@@ -114,34 +112,34 @@ void PH517Runner::processInputs(const DataInputs& inputs, DataOutputs& outputs) 
 }
 
 // Actuate values to hardware components
-void PH517Runner::sendOutputs(const DataOutputs& outputs) {
+void PH517Runner::sendOutputs(const DataOutput& outputs) {
   _io.sendEngineAccel(outputs.engineServo);
   _io.sendMotorAccel(outputs.motorAccel);
 
   // Button LEDs
-  if (_outputs.modeLEDs & BUTTON(1)) {
+  if (outputs.isLedOn(1)) {
     digitalWrite(BUTTON_LED_1, HIGH);
   } else {
     digitalWrite(BUTTON_LED_1, LOW);
   }
-  if (_outputs.modeLEDs & BUTTON(2)) {
+  if (outputs.isLedOn(2)) {
     digitalWrite(BUTTON_LED_2, HIGH);
   } else {
     digitalWrite(BUTTON_LED_2, LOW);
   }
-  if (_outputs.modeLEDs & BUTTON(3)) {
+  if (outputs.isLedOn(3)) {
     digitalWrite(BUTTON_LED_3, HIGH);
   } else {
     digitalWrite(BUTTON_LED_3, LOW);    
   }
-  if (_outputs.modeLEDs & BUTTON(4)) {
+  if (outputs.isLedOn(4)) {
     digitalWrite(BUTTON_LED_4, HIGH);
   } else {
     digitalWrite(BUTTON_LED_4, LOW);
   }
 
   // Engine poweroff
-  if (_outputs.enginePoweroffActive) {
+  if (outputs.enginePoweroffActive) {
     digitalWrite(RELAY_POWER, LOW);
   } else {
     digitalWrite(RELAY_POWER, HIGH);

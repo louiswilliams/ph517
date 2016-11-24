@@ -12,7 +12,7 @@ PH517Runner runner(io);
 // We can't put this in the IO service because the frame receiver needs access
 // to the global io object. Instead we send the buffer to the runner, which 
 // uses the IO service to parse the data
-Arduhdlc hdlc = Arduhdlc(&hdlcSendChar, &hdldRecvFrame, HLDC_MAX_FRAME_LEN);
+Arduhdlc hdlc = Arduhdlc(&hdlcSendChar, &hdldRecvFrame, HDLC_MAX_FRAME_LEN);
 
 void setup() {
   Serial.begin(115200);
@@ -40,7 +40,7 @@ void hdlcSendChar(uint8_t data) {
 
 // Capture data available on the engine serial line
 void hdldRecvFrame(const uint8_t* data, uint16_t len) {
-  runner.setEngineData(data, len);
+  runner.engineDataReceived(data, len);
 }
 
 
