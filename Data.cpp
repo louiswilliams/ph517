@@ -3,7 +3,7 @@
 /*
  class DataInput
  */
-bool DataInput::isSwitchPressed(uint8_t i) {
+bool DataInput::isSwitchPressed(uint8_t i) const {
   return modeSwitches & BUTTON(i);
 }
 
@@ -29,7 +29,7 @@ void DataInput::setEngineData(const uint8_t* data, uint16_t length) {
 /*
  * class DataOutput
  */
-bool DataOutput::isLedOn(uint8_t i) {
+bool DataOutput::isLedOn(uint8_t i) const {
   return modeLEDs & BUTTON(i);
 }
 

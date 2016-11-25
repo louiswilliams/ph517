@@ -51,7 +51,7 @@ public:
   MotorData motor;
 
   // Get switch/LED n, n > 0
-  bool isSwitchPressed(uint8_t i);
+  bool isSwitchPressed(uint8_t i) const;
 
   // Parse engine data from raw data and store in engineData. We don't do this
   // in the runner because that's not the job of the runner.
@@ -72,7 +72,7 @@ public:
   bool enginePoweroffActive;
 
   // Enable/disable LED
-  bool isLedOn(uint8_t i);
+  bool isLedOn(uint8_t i) const;
   bool setLedOn(uint8_t i, bool on);
   void setError(uint16_t error);
   void clearError(uint16_t error);
