@@ -7,11 +7,11 @@
 #include "Adafruit_BluefruitLE_SPI.h"
 #include "Adafruit_BluefruitLE_UART.h"
 
-#define BT_RX 2
-#define BT_TX 3
-#define BT_MOD 4
-#define BT_CTS 5
-#define BT_RTS 6
+#define BT_RX 8
+#define BT_TX 9
+#define BT_MOD 10
+#define BT_CTS 11
+#define BT_RTS 12
 
 #define VERBOSE_MODE false
 #define FACTORY_RESET false
@@ -19,13 +19,14 @@
 
 SoftwareSerial bluefruitSS = SoftwareSerial(BT_RX,BT_TX); // RX, TX
 Adafruit_BluefruitLE_UART ble(bluefruitSS, BT_MOD, BT_CTS, BT_RTS); // MOD, CTS, RTS
+//Adafruit_BluefruitLE_UART ble(Serial2, 9); // MOD, CTS, RTS
 Adafruit_BLEGatt gatt(ble);
 
 uint8_t service_uuid[] = {0xB3, 0x4A, 0x10, 0x00, 0x23, 0x03, 0x47, 0xC5, 0x83, 0xD5, 0x86, 0x83, 0x62, 0xDE, 0xEB, 0xA6};
 
 // A small helper
 void error(const __FlashStringHelper*err) {
-  Serial.println(err);
+//  Serial.println(err);
   while (1);
 }
 

@@ -3,6 +3,7 @@
 
 #define HDLC_MAX_FRAME_LEN 16
 
+int PullHigh = 4;
 int FuelPin = 2;
 int SparkPin = 3;
 
@@ -47,7 +48,9 @@ void setup() {
   ss.begin(9600);
   attachInterrupt(digitalPinToInterrupt(FuelPin), Fuel, CHANGE);
   pinMode(FuelPin, INPUT);
+  pinMode(PullHigh, INPUT);
   digitalWrite(FuelPin, HIGH);
+  digitalWrite(PullHigh, HIGH);
   pinMode(13, OUTPUT);
 }
 
@@ -56,7 +59,6 @@ void loop() {
 
   delay(1000);
   detachInterrupt(digitalPinToInterrupt(FuelPin));
-  digitalWrite(13, HIGH);
   // Send in little-endian (native) order over serial port
   Serial.print("rpm: ");
   Serial.println(engineFrame.rpm, DEC);
@@ -65,7 +67,6 @@ void loop() {
   Serial.print("timeOn: ");
   Serial.println(engineFrame.timeOn, DEC);
   hdlc.frameDecode((const char*)  &engineFrame, sizeof(EngineFrame));
-  digitalWrite(13, LOW);
   attachInterrupt(digitalPinToInterrupt(FuelPin), Fuel, CHANGE);
 
   while (ss.available()) {
@@ -75,19 +76,20 @@ void loop() {
 
 
 void Fuel() {
+  digitalWrite(13, HIGH);
   unsigned long t;
   t = millis();
-  Serial.println("Interrupt");
   if (digitalRead(FuelPin) == HIGH)  {               // if fuel injector Turns on
     timeOff = t - timeold;
     delta = t - timeoldRPM;
-    timeoldRPM = t;                     // Time between injection cycles. (Use for RPM)
   } else if (digitalRead(FuelPin) == LOW) {          // If fuel injector turns off
-    engineFrame.timeOn = t - timeold;      // Calculate new delta
+    engineFrame.timeOn += (t - timeold);      // Calculate new delta
     engineFrame.pulses++;                           // increase # of pulses
-    engineFrame.rpm = 120 * 1000 / (t - timeold) ;  // Calc RPM
+    engineFrame.rpm = 120000 / (t - timeoldRPM) ;  // Calc RPM
+    timeoldRPM = t;                     // Time between injection cycles. (Use for RPM)
   }
   timeold = t;
+  digitalWrite(13, LOW);
 }
 
 
