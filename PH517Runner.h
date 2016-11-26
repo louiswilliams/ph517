@@ -11,6 +11,8 @@
 #include "Data.h"
 #include "InputOutput.h"
 
+#define FRAME_SEND_DELAY 1000
+
 class PH517Runner {
 public:
   PH517Runner() {};
@@ -29,6 +31,8 @@ public:
   void engineDataReceived(const uint8_t* data, uint16_t length);
 
 private:
+  // Keep track of last frame sent to Uno
+  uint32_t lastFrameSend; 
   InputOutput _io;  
   DataInput _inputs;
   DataOutput _outputs;

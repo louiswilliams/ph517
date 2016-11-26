@@ -13,9 +13,6 @@ uint8_t canBuf[CAN_BUF_LEN];
 #define CHAR_BUF_LEN 8
 char charBuf[CHAR_BUF_LEN];
 
-// Car GATT service UUID
-uint8_t service_uuid[] = {0xB3, 0x4A, 0x10, 0x00, 0x23, 0x03, 0x47, 0xC5, 0x83, 0xD5, 0x86, 0x83, 0x62, 0xDE, 0xEB, 0xA6};
-
 // Define interrupt handler
 bool canAvailable = false;
 void canISR() {
@@ -60,63 +57,18 @@ bool InputOutput::setup() {
   _engineServo.attach(ENGINE_PIN);
   _engineServo.write(ENGINE_SERVO_MIN);
 
-  // TODO: Choose a different baud rate
+  // Start, and set timeout
   ENGINE_HWSERIAL.begin(ENGINE_BAUD);
+  ENGINE_HWSERIAL.setTimeout(3000);
+  char buffer;
+  // If no data received, consider this a failure
+  if (ENGINE_HWSERIAL.readBytes(&buffer, 1) == 0) {
+    setupOkay = false;
+    Serial.println(F("Received no data from engine serial"));
+  }
+
   // TODO: Determine actual baud rate
   BATT_HWSERIAL.begin(BATT_BAUD);
-
-  // Setup BT LE module
-  Serial.println(F("Setting up Bluefruit. Trying fast baud rate"));
-
-  _btOkay = true;
-  if (!_btSerial.begin(false, BT_BAUD_FAST)) {
-
-    Serial.println(F("Trying slow baud"));
-
-    if (!_btSerial.begin(false, BT_BAUD)) {
-      Serial.println("Failed to init BT module");
-      _btOkay = false;
-    } else {
-      Serial.println(F("Increasing baud rate..."));
-      _btSerial.print(F("AT+BAUDRATE="));
-      _btSerial.print(BT_BAUD_FAST + "\n");
-      _btSerial.waitForOK();
-      _btSerial.println(F("ATZ"));
-      Serial.println(F("Resetting..."));
-      if (!_btSerial.begin(false, BT_BAUD_FAST)) {
-        Serial.println(F("Couldn't find Bluefruit"));
-        _btOkay = false;
-      }
-    }
-  }
-  setupOkay &= _btOkay;
-  if (_btOkay) {
-    _btSerial.echo(true);
-    _gatt->clear();
-    _gatt->addService(service_uuid);
-
-    _gatt->addCharacteristic(0x1001, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "batt_voltage", NULL);
-    _gatt->addCharacteristic(0x1002, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "batt_current", NULL);
-    _gatt->addCharacteristic(0x1003, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "batt_amphrs", NULL);
-    _gatt->addCharacteristic(0x1004, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "batt_soc", NULL);
-    _gatt->addCharacteristic(0x1005, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "batt_time", NULL);
-    _gatt->addCharacteristic(0x1006, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "batt_temp", NULL);
-    _gatt->addCharacteristic(0x1007, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "motor_rpm", NULL);
-    _gatt->addCharacteristic(0x1008, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "motor_temp", NULL);
-    _gatt->addCharacteristic(0x1009, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "motor_current", NULL);
-    _gatt->addCharacteristic(0x100A, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "motor_voltage", NULL);
-    _gatt->addCharacteristic(0x100B, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "motor_stator", NULL);
-    _gatt->addCharacteristic(0x100C, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "engine_rpm", NULL);
-    _gatt->addCharacteristic(0x100D, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "engine_pulses", NULL);
-    _gatt->addCharacteristic(0x100E, 0x10, 4, 4, BLE_DATATYPE_INTEGER, "engine_timeon", NULL);
-    
-    _btSerial.println("ATZ");
-    _btSerial.waitForOK();
-    Serial.println("GATT Setup done");
-
-    _btSerial.info();
-  }
-  _btSerial.echo(false);
 
   if (CAN_OK != _can.begin(CAN_500KBPS)) {
     Serial.println("Failed to init CAN bus shield");
@@ -167,7 +119,6 @@ void InputOutput::getMotorData(MotorData& motorData) {
       // Parse data based on which address it came from
       if (id == CAN_ADDR1) {
         motorData.rpm = canBuf[1] + (canBuf[0] << 8);
-        setChar(MOTOR_RPM, motorData.rpm);
 
         // Convert to non-negative, normalized values
         uint8_t temp = ((int8_t) canBuf[2]) + 40;
@@ -180,18 +131,14 @@ void InputOutput::getMotorData(MotorData& motorData) {
         assert(controllerTemp <= 240);
 
         motorData.temp = temp; 
-        setChar(MOTOR_TEMP, motorData.temp);
         
         motorData.controllerTemp = controllerTemp;
         motorData.rmsCurrent = canBuf[5] + (canBuf[4] << 8);
-        setChar(MOTOR_CURRENT, motorData.rmsCurrent);
         
         motorData.capVoltage = canBuf[7] + (canBuf[6] << 8);
-        setChar(MOTOR_VOLTAGE, motorData.capVoltage);
 
       } else if (id == CAN_ADDR2) {
         motorData.statorFreq = canBuf[1] + (canBuf[0] << 8);
-        setChar(MOTOR_STATOR, motorData.statorFreq);
       } 
       else {
         Serial.print("Received message from unknown ID: ");
@@ -258,13 +205,3 @@ void InputOutput::sendMotorRegen(uint16_t output) {
   TWBR = twbrback;
 }
 
-void InputOutput::setChar(uint8_t index, uint16_t value) {
-  if (_btOkay) {
-    String v = String(value);
-    v.toCharArray(charBuf, CHAR_BUF_LEN);
-    bool isOK = _gatt->setChar(index, charBuf);
-  }
-  // if (!isOK) {
-  //   Serial.println("Error setting char value for " + index);
-  // }
-}

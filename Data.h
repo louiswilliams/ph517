@@ -21,16 +21,18 @@ typedef struct {
   uint8_t currentSign; // 1 for positive, 0 for negative
   uint8_t ampHourSign; // 1 for positive, 0 for negative
 } BattData;
+// sizeof(BattData) = 14
 
 // CAN data from motor
 typedef struct {
   uint16_t rpm; // x1
-  uint8_t temp; // [0,240] - 40
-  uint8_t controllerTemp; // [0,240] - 40
   uint16_t rmsCurrent; // x10
   uint16_t capVoltage; // x10
   uint16_t statorFreq; // x1
+  uint8_t temp; // [0,240] - 40
+  uint8_t controllerTemp; // [0,240] - 40
 } MotorData;
+// sizeof(BattData) = 10
 
 // Engine data from Arduino Micro  
 typedef struct {
@@ -45,10 +47,10 @@ public:
   uint16_t throttle; // [0,1023]
   uint16_t brake; // [0,1023]
   uint16_t battTemp; // [0,1023]
-  uint8_t modeSwitches;
+  uint16_t modeSwitches;
   BattData batt;
-  EngineData engine;
   MotorData motor;
+  EngineData engine;
 
   // Get switch/LED n, n > 0
   bool isSwitchPressed(uint8_t i) const;

@@ -22,7 +22,6 @@ bool PH517Runner::step() {
   // Send OutputData to hardware
   sendOutputs(_outputs);
 
-  // TODO: Beacon to UI Tablet
   delay(10);
   return true;
 }
@@ -49,10 +48,6 @@ void PH517Runner::collectInputs(DataInput& inputs) {
 // Parse incoming 
 void PH517Runner::engineDataReceived(const uint8_t* data, uint16_t length) {
   _inputs.setEngineData(data, length);
-
-  _io.setChar(ENGINE_RPM, _inputs.engine.rpm);
-  _io.setChar(ENGINE_PULSES, _inputs.engine.pulses);
-  _io.setChar(ENGINE_TIMEON, _inputs.engine.timeOn);
 }
 
 // Process inputs and return outputs from control block
@@ -116,6 +111,8 @@ void PH517Runner::sendOutputs(const DataOutput& outputs) {
   _io.sendEngineAccel(outputs.engineServo);
   _io.sendMotorAccel(outputs.motorAccel);
 
+  char sendBuf[32];
+
   // Button LEDs
   if (outputs.isLedOn(1)) {
     digitalWrite(BUTTON_LED_1, HIGH);
@@ -159,8 +156,26 @@ void PH517Runner::sendOutputs(const DataOutput& outputs) {
     digitalWrite(RELAY_CRANK, HIGH);
   }
 
+  // Send data if the send delay timer is overdue
+  uint32_t now = millis();
+  if (now - lastFrameSend > FRAME_SEND_DELAY) {
+    lastFrameSend = now;
+    
+    uint16_t cursor = 0;
 
-  // TODO: Send Motor accel/regen
-  // TODO: Swtich LEDs
-  // TODO: Switch relays
+    // Send first 8 bytes of input struct
+    memcpy(sendBuf, &_inputs, 8);
+    cursor += 8;
+
+    memcpy(&sendBuf[cursor], &_inputs.batt, sizeof(_inputs.batt));
+    cursor += sizeof(_inputs.batt);
+
+    memcpy(&sendBuf[cursor], &_inputs.motor, sizeof(_inputs.motor));
+    cursor += sizeof(_inputs.motor);
+
+    hdlc.frameDecode((const char*)  sendBuf, cursor);
+
+  }
+
+
 }

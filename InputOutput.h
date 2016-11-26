@@ -109,8 +109,6 @@ class InputOutput {
 public:
   InputOutput(bool debug = false) :
     _debug(debug),
-    _btSerial(BT_HWSERIAL, BT_MOD),
-    _gatt(new Adafruit_BLEGatt(_btSerial)),
     _can(CAN_CS) {};
 
   // Initialize hardware
@@ -151,16 +149,9 @@ public:
   // Send 12-bit brake command over I2C bus. Values between 0 and 4096
   void sendMotorRegen(uint16_t output);
   
-
-  // Set BT GATT service characteristic 
-  void setChar(uint8_t index, uint16_t value);
-
 private:
-
   bool _debug;
   bool _btOkay;
-  Adafruit_BluefruitLE_UART _btSerial; // Bluetooth LE module
-  Adafruit_BLEGatt* _gatt;
   Servo _engineServo;
   MCP_CAN _can;
 };
