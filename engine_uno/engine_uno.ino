@@ -66,7 +66,8 @@ typedef struct {
 } CarData;
 
 // Pins
-int PullHigh = 4;
+int PullHigh1 = 4;
+int PullHigh2 = 10;
 int FuelPin = 2;
 int SparkPin = 3;
 
@@ -86,12 +87,12 @@ uint8_t service_uuid[] = {0xB3, 0x4A, 0x10, 0x00, 0x23, 0x03, 0x47, 0xC5, 0x83, 
 char charBuf[CHAR_BUF_LEN];
 
 // Configure software serial devices
-SoftwareSerial ssMega = SoftwareSerial(8, 9); // (RX, TX) Pin 8 supports interrupts on the Uno
-SoftwareSerial ssBt = SoftwareSerial(10, 11); // Adafruit BTLE module
+SoftwareSerial ssMega = SoftwareSerial(11, 12); // (RX, TX) Pin 8 supports interrupts on the Uno
+SoftwareSerial ssBt = SoftwareSerial(8, 9); // Adafruit BTLE module
 
 bool btSetupOkay;
 // Configure BTLE module and GATT object
-Adafruit_BluefruitLE_UART btle(ssBt, 12, 6, 7); // (softwareSerial, MODE, CTS, RTS) Bluetooth LE module
+Adafruit_BluefruitLE_UART btle(ssBt, 5, 6, 7); // (softwareSerial, MODE, CTS, RTS) Bluetooth LE module
 Adafruit_BLEGatt gatt(btle);
 
 Arduhdlc hdlc = Arduhdlc(&hdlcSendChar, &hdlcRecvFrame, HDLC_MAX_FRAME_LEN);
@@ -110,8 +111,10 @@ void setup() {
   pinMode(13, OUTPUT);
 
   // Set pullup resistor for when phototransistor is not closed
-  pinMode(PullHigh, INPUT);
-  digitalWrite(PullHigh, HIGH);
+  pinMode(PullHigh1, INPUT);
+  pinMode(PullHigh2, INPUT);
+  digitalWrite(PullHigh1, HIGH);
+  digitalWrite(PullHigh2, HIGH);
 
   // Attach interrupt and 
   attachInterrupt(digitalPinToInterrupt(FuelPin), Fuel, CHANGE);
@@ -173,7 +176,7 @@ void Fuel() {
   unsigned long t;
   t = millis();
   if (digitalRead(FuelPin) == HIGH)  {               // if fuel injector Turns on
-    timeOff = t - timeold;
+      timeOff = t - timeold;
     delta = t - timeoldRPM;
   } else if (digitalRead(FuelPin) == LOW) {          // If fuel injector turns off
     engineData.timeOn += (t - timeold);      // Calculate new delta

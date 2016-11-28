@@ -59,7 +59,6 @@
 #define CAN_ADDR2 0x602
 // Serial ports
 #define ENGINE_HWSERIAL Serial1
-#define BT_HWSERIAL Serial2
 #define BATT_HWSERIAL Serial3
 // Baud rates
 #define ENGINE_BAUD 9600

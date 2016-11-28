@@ -13,12 +13,6 @@ uint8_t canBuf[CAN_BUF_LEN];
 #define CHAR_BUF_LEN 8
 char charBuf[CHAR_BUF_LEN];
 
-// Define interrupt handler
-bool canAvailable = false;
-void canISR() {
-  canAvailable = true;
-}
-
 bool InputOutput::setup() {
 
   bool setupOkay = true;
@@ -70,13 +64,11 @@ bool InputOutput::setup() {
   // TODO: Determine actual baud rate
   BATT_HWSERIAL.begin(BATT_BAUD);
 
-  if (CAN_OK != _can.begin(CAN_500KBPS)) {
+  if (CAN_OK != _can.begin(CAN_125KBPS)) {
     Serial.println("Failed to init CAN bus shield");
     setupOkay = false;
   }
 
-  // CAN Interrupt 
-  attachInterrupt(CAN_INT, canISR, FALLING);
 
   // Wait to turn on motor controller
   delay(1000);
@@ -108,43 +100,41 @@ uint16_t InputOutput::readBattTemp() {
 
 // Gets motor data from CAN and stores in motorData
 void InputOutput::getMotorData(MotorData& motorData) {
-  // If CAN flag set from ISR routine, then read data
-  if (canAvailable) {
-    canAvailable = false;
+  // If CAN messages available, read buffer
 
-    while (CAN_MSGAVAIL == _can.checkReceive()) {
-      _can.readMsgBuf(&canBufLen, canBuf);
-      uint32_t id = _can.getCanId();
+  while (CAN_MSGAVAIL == _can.checkReceive()) {
+    _can.readMsgBuf(&canBufLen, canBuf);
+    uint32_t id = _can.getCanId();
 
-      // Parse data based on which address it came from
-      if (id == CAN_ADDR1) {
-        motorData.rpm = canBuf[1] + (canBuf[0] << 8);
+    Serial.println("CAN available");
 
-        // Convert to non-negative, normalized values
-        uint8_t temp = ((int8_t) canBuf[2]) + 40;
-        uint8_t controllerTemp = ((int8_t)canBuf[3]) + 40;
+    // Parse data based on which address it came from
+    if (id == CAN_ADDR1) {
+      motorData.rpm = canBuf[1] + (canBuf[0] << 8);
 
-        // Assumptions made from the motor manual values
-        assert(temp >= 0);
-        assert(temp <= 240);
-        assert(controllerTemp >= 0);
-        assert(controllerTemp <= 240);
+      // Convert to non-negative, normalized values
+      uint8_t temp = ((int8_t) canBuf[2]) + 40;
+      uint8_t controllerTemp = ((int8_t)canBuf[3]) + 40;
 
-        motorData.temp = temp; 
-        
-        motorData.controllerTemp = controllerTemp;
-        motorData.rmsCurrent = canBuf[5] + (canBuf[4] << 8);
-        
-        motorData.capVoltage = canBuf[7] + (canBuf[6] << 8);
+      // Assumptions made from the motor manual values
+      assert(temp >= 0);
+      assert(temp <= 240);
+      assert(controllerTemp >= 0);
+      assert(controllerTemp <= 240);
 
-      } else if (id == CAN_ADDR2) {
-        motorData.statorFreq = canBuf[1] + (canBuf[0] << 8);
-      } 
-      else {
-        Serial.print("Received message from unknown ID: ");
-        Serial.println(id, HEX);
-      }
+      motorData.temp = temp; 
+      
+      motorData.controllerTemp = controllerTemp;
+      motorData.rmsCurrent = canBuf[5] + (canBuf[4] << 8);
+      
+      motorData.capVoltage = canBuf[7] + (canBuf[6] << 8);
 
+    } else if (id == CAN_ADDR2) {
+      motorData.statorFreq = canBuf[1] + (canBuf[0] << 8);
+    } 
+    else {
+      Serial.print("Received message from unknown ID: ");
+      Serial.println(id, HEX);
     }
   }
 }

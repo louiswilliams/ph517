@@ -11,7 +11,7 @@
 #include "Data.h"
 #include "InputOutput.h"
 
-#define FRAME_SEND_DELAY 1000
+#define FRAME_SEND_DELAY 250
 
 class PH517Runner {
 public:
