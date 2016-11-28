@@ -10,24 +10,7 @@
 #define BT_BAUD_FAST 57600
 #define CHAR_BUF_LEN 16
 
-#define SEND_DELAY 1000
-
-// GATT service indexes
-#define BATT_VOLTAGE 1 
-#define BATT_CURRENT 2 
-#define BATT_AMPHRS 3 
-#define BATT_SOC 4 
-#define BATT_TIME 5 
-#define BATT_TEMP 6 
-#define MOTOR_RPM 7 
-#define MOTOR_TEMP 8 
-#define MOTOR_CURRENT 9 
-#define MOTOR_VOLTAGE 10 
-#define MOTOR_STATOR 11
-#define ENGINE_RPM 12
-#define ENGINE_PULSES 13
-#define ENGINE_TIMEON 14
-#define CAR_MODE 15
+#define SEND_DELAY 250
 
 // Storage struct for receiving engine data
 typedef struct {
@@ -66,8 +49,8 @@ typedef struct {
 } CarData;
 
 // Pins
-int PullHigh1 = 4;
-int PullHigh2 = 10;
+int SparkPullup = 4;
+int FuelPullup = 10;
 int FuelPin = 2;
 int SparkPin = 3;
 
@@ -78,6 +61,8 @@ volatile uint32_t t = 0;
 volatile uint32_t timeoldRPM = 0;
 volatile uint32_t delta = 0;
 
+volatile bool settingGatt = false;
+
 // Storage structures
 EngineData engineData = {0, 0, 0};
 CarData carData;
@@ -86,11 +71,31 @@ CarData carData;
 uint8_t service_uuid[] = {0xB3, 0x4A, 0x10, 0x00, 0x23, 0x03, 0x47, 0xC5, 0x83, 0xD5, 0x86, 0x83, 0x62, 0xDE, 0xEB, 0xA6};
 char charBuf[CHAR_BUF_LEN];
 
-// Configure software serial devices
-SoftwareSerial ssMega = SoftwareSerial(11, 12); // (RX, TX) Pin 8 supports interrupts on the Uno
-SoftwareSerial ssBt = SoftwareSerial(8, 9); // Adafruit BTLE module
+#define MEGA_TX 12
+#define MEGA_RX 11
 
-bool btSetupOkay;
+#define BT_TX 9
+#define BT_RX 8
+
+// Do we want to use the HW Serial port to communicate with the Mega?
+// Set to false to debug the Uno
+#define USE_HWSERAL true
+
+// Configure software serial devices
+// Printing will be a noop if using HW serial
+#ifdef USE_HWSERAL
+  #define ssMega Serial
+  #define PRINT(msg,args...)
+  #define PRINTLN(msg,args...)
+#else
+  SoftwareSerial ssMega = SoftwareSerial(MEGA_RX, MEGA_TX); // (RX, TX) Arduino Mega serial
+  #define PRINT(msg,args...) Serial.print(msg,args)
+  #define PRINTLN(msg, args...) Serial.println(msg,args)
+#endif
+
+SoftwareSerial ssBt = SoftwareSerial(BT_RX, BT_TX); // Adafruit BTLE module
+
+bool btSetupOkay = false;
 // Configure BTLE module and GATT object
 Adafruit_BluefruitLE_UART btle(ssBt, 5, 6, 7); // (softwareSerial, MODE, CTS, RTS) Bluetooth LE module
 Adafruit_BLEGatt gatt(btle);
@@ -98,57 +103,70 @@ Adafruit_BLEGatt gatt(btle);
 Arduhdlc hdlc = Arduhdlc(&hdlcSendChar, &hdlcRecvFrame, HDLC_MAX_FRAME_LEN);
 
 void setup() {
-  // put your setup code here, to run once:
+
+#ifndef USE_HWSERAL
   Serial.begin(115200);
+#endif
+
   ssMega.begin(9600);
 
   btSetupOkay = setUpBluefruit();
   if (!btSetupOkay) {
-    Serial.println(F("Failed to setup BT module"));
+    PRINTLN(F("Failed to setup BT module"));
   }
 
   // Add indicator LED
   pinMode(13, OUTPUT);
 
-  // Set pullup resistor for when phototransistor is not closed
-  pinMode(PullHigh1, INPUT);
-  pinMode(PullHigh2, INPUT);
-  digitalWrite(PullHigh1, HIGH);
-  digitalWrite(PullHigh2, HIGH);
+  // Set pullup resistors for when phototransistor is not closed
+  pinMode(SparkPullup, INPUT);
+  digitalWrite(SparkPullup, HIGH);
+
+  pinMode(FuelPullup, INPUT);
+  digitalWrite(FuelPullup, HIGH);
 
   // Attach interrupt and 
-  attachInterrupt(digitalPinToInterrupt(FuelPin), Fuel, CHANGE);
   pinMode(FuelPin, INPUT);
   digitalWrite(FuelPin, HIGH);
+  attachInterrupt(digitalPinToInterrupt(FuelPin), Fuel, CHANGE);
 
-  Serial.println(F("Setup done"));
+  PRINTLN(F("Setup done"));
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-  uint32_t now = millis();
+  uint32_t start = millis();
 
   detachInterrupt(digitalPinToInterrupt(FuelPin));
   
   // Send engine data in little-endian (native) order over serial port
-  Serial.print("rpm: ");
-  Serial.println(engineData.rpm, DEC);
-  Serial.print("pulses: ");
-  Serial.println(engineData.pulses, DEC);
-  Serial.print("timeOn: ");
-  Serial.println(engineData.timeOn, DEC);
+  PRINT("rpm: ");
+  PRINTLN(engineData.rpm, DEC);
+  PRINT("pulses: ");
+  PRINTLN(engineData.pulses, DEC);
+  PRINT("timeOn: ");
+  PRINTLN(engineData.timeOn, DEC);
   hdlc.frameDecode((const char*)  &engineData, sizeof(EngineData));
 
-  attachInterrupt(digitalPinToInterrupt(FuelPin), Fuel, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(FuelPin), Fuel, CHANGE);  
 
   // Receive data
+  bool data = false;
   while (ssMega.available()) {
     hdlc.charReceiver((char) ssMega.read());
+    data = true;
+  }
+
+  if (data) {
+    // Send to GATT service
+    setGattChars();    
   }
 
   uint32_t end = millis();
-  uint32_t delayTime = SEND_DELAY - (end-now);
-  delay(delayTime);
+  uint32_t delayTime = end - start;
+  if (delayTime < SEND_DELAY) {
+    delay(SEND_DELAY - delayTime);    
+  }
 }
 
 // Send data
@@ -158,15 +176,12 @@ void hdlcSendChar(uint8_t data) {
 
 void hdlcRecvFrame(const uint8_t* data, uint16_t len) {
   if (len == sizeof(CarData)) {
-    Serial.println(F("Received data frame from car"));
+    PRINTLN(F("Received data frame from car"));
     // Copy data to struct
     memcpy(&carData, data, len);
-
-    // Send to GATT service
-    setGattChars();
   } else {
-    Serial.print(F("Received data of unknown length: "));
-    Serial.println(len, DEC);
+    PRINT(F("Received data of unknown length: "));
+    PRINTLN(len, DEC);
   }
 }
 
@@ -176,7 +191,7 @@ void Fuel() {
   unsigned long t;
   t = millis();
   if (digitalRead(FuelPin) == HIGH)  {               // if fuel injector Turns on
-      timeOff = t - timeold;
+    timeOff = t - timeold;
     delta = t - timeoldRPM;
   } else if (digitalRead(FuelPin) == LOW) {          // If fuel injector turns off
     engineData.timeOn += (t - timeold);      // Calculate new delta
@@ -190,28 +205,29 @@ void Fuel() {
 
 // Setup BT LE module
 bool setUpBluefruit() {
-  Serial.println(F("Setting up Bluefruit. Trying fast baud rate"));
+  PRINTLN(F("Setting up Bluefruit. Trying fast baud rate"));
 
+  bool debug = false;
   // Try fast baud rate
   bool btOkay = true;
-  if (!btle.begin(false, BT_BAUD_FAST)) {
+  if (!btle.begin(debug, BT_BAUD_FAST)) {
 
-    Serial.println(F("Trying slow baud"));
+    PRINTLN(F("Trying slow baud"));
 
     // Then try slow baud rate
-    if (!btle.begin(false, BT_BAUD)) {
-      Serial.println("Failed to init BT module");
+    if (!btle.begin(debug, BT_BAUD)) {
+      PRINTLN("Failed to init BT module");
       btOkay = false;
     } else {
       // Increase and reset
-      Serial.println(F("Increasing baud rate..."));
+      PRINTLN(F("Increasing baud rate..."));
       btle.print(F("AT+BAUDRATE="));
-      btle.print(BT_BAUD_FAST + "\n");
+      btle.println(BT_BAUD_FAST, DEC);
       btle.waitForOK();
       btle.println(F("ATZ"));
-      Serial.println(F("Resetting..."));
-      if (!btle.begin(false, BT_BAUD_FAST)) {
-        Serial.println(F("Couldn't find Bluefruit"));
+      PRINTLN(F("Resetting..."));
+      if (!btle.begin(debug, BT_BAUD_FAST)) {
+        PRINTLN(F("Couldn't find Bluefruit"));
         btOkay = false;
       }
     }
@@ -241,7 +257,7 @@ bool setUpBluefruit() {
 
     btle.println("ATZ");
     btle.waitForOK();
-    Serial.println("GATT Setup done");
+    PRINTLN("GATT Setup done");
 
     btle.info();
   }
@@ -252,21 +268,21 @@ bool setUpBluefruit() {
 }
 
 void setGattChars() {
-  setChar(0x1, carData.battVoltage);
-  setChar(0x2, carData.battCurrent);
-  setChar(0x3, carData.battAmpHours);
-  setChar(0x4, carData.battStateOfCharge);
-  setChar(0x5, carData.battTimeToGo);
+  // setChar(0x1, carData.battVoltage);
+  // setChar(0x2, carData.battCurrent);
+  // setChar(0x3, carData.battAmpHours);
+  // setChar(0x4, carData.battStateOfCharge);
+  // setChar(0x5, carData.battTimeToGo);
   setChar(0x6, carData.battTherm);
   setChar(0x7, carData.motorRpm);
   setChar(0x8, carData.motorTemp);
   setChar(0x9, carData.motorRmsCurrent);
   setChar(0xA, carData.motorCapVoltage);
   setChar(0xB, carData.motorStatorFreq);
+  // setChar(0xF, carData.modeSwitches);
   setChar(0xC, engineData.rpm);
   setChar(0xD, engineData.pulses);
   setChar(0xE, engineData.timeOn);
-  setChar(0xF, carData.modeSwitches);
 }
 
 // Set characteristic value by index
