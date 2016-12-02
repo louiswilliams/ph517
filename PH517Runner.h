@@ -18,6 +18,13 @@
 #define CONST_MOTOR_PERCENT 1.0
 #define CONST_REGEN_PERCENT 0.0
 
+typedef enum {
+  NO_MODE,
+  ECON_MODE,
+  ELECTRIC_MODE,
+  SPORT_MODE,
+  REVERSE_MODE
+};
 
 class PH517Runner {
 public:
@@ -32,17 +39,31 @@ public:
   // Actuate values to hardware components
   void sendOutputs(const DataOutput& outputs);
 
+  // Block until a mode selection has been made
+  void waitForMode();
 
   // Callback from HDLC link when engine data is received
   void engineDataReceived(const uint8_t* data, uint16_t length);
 
 private:
-  // Keep track of last frame sent to Uno
-  uint32_t lastFrameSend; 
-  uint32_t lastDebugPrint; 
+
+  // Return mode enum from input switch mask
+  uint8_t getModeFromSwitches(uint8_t switches);
+
   InputOutput _io;  
   DataInput _inputs;
   DataOutput _outputs;
+
+  // Keep track of last frame sent to Uno
+  uint32_t _lastFrameSend = 0; 
+  uint32_t _lastDebugPrint = 0; 
+  uint16_t _numSteps = 0;
+
+  // State
+  uint8_t _carMode = NO_MODE;
+  bool _reverseActive = false;
+  bool _crankActive = false;
+  bool _enginePoweroffActive = false;
 };
 
 #endif

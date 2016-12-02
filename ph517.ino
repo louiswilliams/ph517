@@ -19,8 +19,11 @@ void setup() {
   if (!io.setup()) {
     Serial.println("Failed to setup");
   } else {
-    Serial.println("Setup done");
+    Serial.println("IO Setup done");
   }
+
+  // Wait for user to select mode
+  runner.waitForMode();
 }
 
 void loop() {

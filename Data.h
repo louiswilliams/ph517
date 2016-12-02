@@ -63,15 +63,12 @@ public:
 // Outputs
 class DataOutput {
 public:
-  int16_t errors;
-  uint16_t motorAccel; // [0,4095]
-  uint16_t motorRegen; // [0,4095]
-  uint8_t engineServo; // [0-255]
-  uint8_t modeLEDs;
-  uint8_t thermalRelays;
-  bool reverseActive;
-  bool crankActive;
-  bool enginePoweroffActive;
+  int16_t errors = 0;
+  uint16_t motorAccel = 0; // [0,4095]
+  uint16_t motorRegen = 0; // [0,4095]
+  uint8_t engineServo = 0; // [0-255]
+  uint8_t modeLEDs = 0;
+  uint8_t thermalRelays = 0;
 
   // Enable/disable LED
   bool isLedOn(uint8_t i) const;

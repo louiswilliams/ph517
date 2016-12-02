@@ -29,13 +29,12 @@ bool InputOutput::setup() {
 
   // Switch LEDs
   pinMode(BUTTON_LED_1, OUTPUT);
-  digitalWrite(BUTTON_LED_1, HIGH);
   pinMode(BUTTON_LED_2, OUTPUT);
-  digitalWrite(BUTTON_LED_2, HIGH);
   pinMode(BUTTON_LED_3, OUTPUT);
-  digitalWrite(BUTTON_LED_3, HIGH);
   pinMode(BUTTON_LED_4, OUTPUT);
-  digitalWrite(BUTTON_LED_4, HIGH);
+
+  // Stage 1 light
+  digitalWrite(BUTTON_LED_1, HIGH);
 
   // Relays
   for (int i=RELAY_PIN_START; i <= RELAY_PIN_END; i++) {
@@ -51,6 +50,9 @@ bool InputOutput::setup() {
   _engineServo.attach(ENGINE_PIN);
   _engineServo.write(ENGINE_SERVO_MIN);
 
+  // Stage 2 indicator
+  digitalWrite(BUTTON_LED_2, HIGH);
+
   // Start, and set timeout
   ENGINE_HWSERIAL.begin(ENGINE_BAUD);
   ENGINE_HWSERIAL.setTimeout(3000);
@@ -61,6 +63,11 @@ bool InputOutput::setup() {
     Serial.println(F("Received no data from engine serial"));
   }
 
+  // Stage 3 light
+  if (setupOkay) {
+    digitalWrite(BUTTON_LED_3, HIGH);
+  }
+
   // TODO: Determine actual baud rate
   BATT_HWSERIAL.begin(BATT_BAUD);
 
@@ -69,10 +76,14 @@ bool InputOutput::setup() {
     setupOkay = false;
   }
 
-
   // Wait to turn on motor controller
   delay(1000);
   digitalWrite(RELAY_MOTOR, LOW);
+
+  // Stage 4 light, done
+  if (setupOkay) {
+    digitalWrite(BUTTON_LED_4, HIGH);
+  }
 
   return setupOkay;
 }

@@ -75,6 +75,9 @@
 #define ENGINE_SERVO_MAX 36
 #define THROTTLE_MIN 863
 #define THROTTLE_MAX 560
+#define BRAKE_MIN 0
+#define BRAKE_MAX 900
+
 
 // BT GATT Characteristic indexes
 #define BATT_VOLTAGE 1

@@ -11,6 +11,8 @@ PH517Runner::PH517Runner(InputOutput& io) {
   _inputs = {};
   _outputs = {};
   _io = io;
+
+
 }
 
 bool PH517Runner::step() {
@@ -22,12 +24,20 @@ bool PH517Runner::step() {
   // Send OutputData to hardware
   sendOutputs(_outputs);
 
+  // Increment step counter
+  _numSteps++;
+
   // Send data if the send delay timer is overdue
   uint32_t now = millis();
-  if (now - lastDebugPrint > DEBUG_PRINT_DELAY) {
-    lastDebugPrint = now;
+  if (now - _lastDebugPrint > DEBUG_PRINT_DELAY) {
 
-    Serial.println("\nMOTOR");
+    // Step rate (steps/second)
+    float rate = _numSteps/((now - _lastDebugPrint)/1000.0);
+
+    Serial.println();
+    Serial.print("Rate (Hz): ");
+    Serial.println(rate, 1);
+    Serial.println("MOTOR");
     Serial.print("  rpm: ");
     Serial.println(_inputs.motor.rpm, DEC); // x1
     Serial.print("  rmsCurrent: ");
@@ -54,8 +64,10 @@ bool PH517Runner::step() {
     Serial.println(_inputs.engine.pulses, DEC);
     Serial.print("  timeOn: " );
     Serial.println(_inputs.engine.timeOn, DEC); 
-  }  
 
+    _lastDebugPrint = now;
+    _numSteps = 0;
+  }  
   delay(10);
   return true;
 }
@@ -80,71 +92,90 @@ void PH517Runner::engineDataReceived(const uint8_t* data, uint16_t length) {
 // Process inputs and return outputs from control block
 void PH517Runner::processInputs(const DataInput& inputs, DataOutput& outputs) {
 
-  outputs.engineServo = constrain(map(inputs.throttle, THROTTLE_MIN, THROTTLE_MAX, 0, 255), 0, 255);
-  outputs.motorAccel = constrain(map(inputs.throttle, THROTTLE_MIN, THROTTLE_MAX, 0, 4095), 0, 4095);
-  outputs.motorRegen = constrain(map(inputs.throttle, THROTTLE_MIN, THROTTLE_MAX, 0, 4095), 0, 4095);
+  //
+  // Push Buttons
+  //
+  outputs.modeLEDs = 0;
 
-  outputs.engineServo *= CONST_ENGINE_PERCENT;
-  outputs.motorAccel *= CONST_MOTOR_PERCENT;
-  outputs.motorRegen *= CONST_REGEN_PERCENT;
-
-  // White
-  if (inputs.isSwitchPressed(1)) {
-    outputs.crankActive = true;
-    outputs.setLedOn(1, false);
-  } else {    
-    outputs.crankActive = false;
+  // White: Reverse
+  if (inputs.isSwitchPressed(1) || _carMode == REVERSE_MODE) {
+    // Enable light and reverse mode
     outputs.setLedOn(1, true);
+    _carMode = REVERSE_MODE;
   }
-  // Green
-  if (inputs.isSwitchPressed(2)) {
-    if (outputs.reverseActive) {
-      // Disable light if active
-      outputs.setLedOn(2, false);
+  // Blue: Econ
+  if (inputs.isSwitchPressed(2) || _carMode == ECON_MODE) {
+
+    // If already in Econ mode, activate starter
+    if (inputs.isSwitchPressed(2) && _carMode == ECON_MODE) {
+      _crankActive = true;      
     } else {
-      // Enable light if inactive
-      outputs.setLedOn(2, true);
+      _crankActive = false;
     }
-  } else {
-
-    // If reverse is active and LED is OFF, deactivate reverse
-    if (outputs.reverseActive && !(outputs.isLedOn(2))) {
-      outputs.reverseActive = false;
-      outputs.setLedOn(2, false);
-    // If reverse is not active and LED is ON, activate
-    } else if (!outputs.reverseActive && (outputs.isLedOn(2))) {
-      outputs.setLedOn(2, true);
-      outputs.reverseActive = true;
-    }
+    outputs.setLedOn(2, true);
+    _carMode = ECON_MODE;
+    // Delay so starter isn't immediately activated
+    delay(250);
   }
-  // Blue
-  if (inputs.isSwitchPressed(3)) {
-    outputs.setLedOn(3, false);
-  } else {    
+
+  // Green: Electric
+  if (inputs.isSwitchPressed(3) || _carMode == ELECTRIC_MODE) {
+    if (_carMode != ELECTRIC_MODE) {
+      // Set this. The runner will delay for a few seconds and then set to false
+      _enginePoweroffActive = true;
+    }
     outputs.setLedOn(3, true);
+    _carMode = ELECTRIC_MODE;
   }
-  // Red
-  if (inputs.isSwitchPressed(4)) {
-    outputs.enginePoweroffActive = true;
-    outputs.setLedOn(4, false);
-  } else {    
-    outputs.enginePoweroffActive = false;
+  // Red: Sport
+  if (inputs.isSwitchPressed(4) || _carMode == SPORT_MODE) {
+    if (inputs.isSwitchPressed(4) && _carMode == SPORT_MODE) {
+      _crankActive = true;
+    } else {
+      _crankActive = false;
+    }
     outputs.setLedOn(4, true);
+    _carMode = SPORT_MODE;
+    // Delay so starter isn't immediately activated
+    delay(250);
   }
 
+  // Calculate engine, motor, and regen values
+  uint8_t engineAccel = constrain(map(inputs.throttle, THROTTLE_MIN, THROTTLE_MAX, 0, 255), 0, 255);
+  uint16_t motorAccel = constrain(map(inputs.throttle, THROTTLE_MIN, THROTTLE_MAX, 0, 4095), 0, 4095);
+  uint16_t throttleRegen = constrain(map(inputs.throttle, THROTTLE_MIN, THROTTLE_MAX, 0, 4095), 0, 4095);
+  uint16_t brakeRegen = constrain(map(inputs.brake, BRAKE_MIN, BRAKE_MAX, 0, 4095), 0, 4095);
 
+  // Reverse mode. Electic only //
+  if (_carMode == REVERSE_MODE) {
+    outputs.motorAccel = motorAccel;
+    outputs.engineAccel = 0;
+    outputs.motorRegen = 0;
 
-  // Serial.println("--Outputs--");
-  // Serial.println(" engineServo: " + outputs.engineServo);
-  // Serial.println(" motorAccel: " + outputs.motorAccel);  
+  // Econ mode. Engine 100%, motorRegen 50%, brakeRegen %100
+  } else if (_carMode == ECON_MODE) {
+    outputs.motorAccel = 0;
+    outputs.engineAccel = engineAccel;
+    outputs.motorRegen = max(0.5*throttleRegen, brakeRegen);
+
+  // Only electric
+  } else if (_carMode == ELECTRIC_MODE) {
+    outputs.motorAccel = motorAccel;
+    outputs.engineAccel = 0;
+    outputs.motorRegen = brakeRegen
+
+  // Both electric and engine
+  } else if (_carMode == SPORT_MODE) {
+    outputs.motorAccel = motorAccel;
+    outputs.engineAccel = engineAccel;
+    outputs.motorRegen = brakeRegen;
+  }
 }
 
 // Actuate values to hardware components
 void PH517Runner::sendOutputs(const DataOutput& outputs) {
   _io.sendEngineAccel(outputs.engineServo);
   _io.sendMotorAccel(outputs.motorAccel);
-
-  char sendBuf[32];
 
   // Button LEDs
   if (outputs.isLedOn(1)) {
@@ -169,30 +200,49 @@ void PH517Runner::sendOutputs(const DataOutput& outputs) {
   }
 
   // Engine poweroff
-  if (outputs.enginePoweroffActive) {
+  if (_enginePoweroffActive) {
+
     digitalWrite(RELAY_POWER, LOW);
+
+    // Hold if switching to electric electric mode
+    if (_carMode == ELECTRIC_MODE) {
+      delay(2000);
+      _enginePoweroffActive = false;
+    }
   } else {
     digitalWrite(RELAY_POWER, HIGH);
   }
-  // Reverse
-  if (outputs.reverseActive) {
+
+  // Starter
+  if (_crankActive) {
+    digitalWrite(RELAY_CRANK, LOW);
+  } else {
+    digitalWrite(RELAY_CRANK, HIGH);
+  }
+
+  // Reverse: Reverse motor direction and activate brake lights
+  if (_carMode == REVERSE_MODE) {
     digitalWrite(RELAY_MOTORDIR, LOW);
     digitalWrite(RELAY_REVERSE, LOW);
   } else {
     digitalWrite(RELAY_MOTORDIR, HIGH);
     digitalWrite(RELAY_REVERSE, HIGH);
   }
-  // Starter
-  if (outputs.crankActive) {
-    digitalWrite(RELAY_CRANK, LOW);
-  } else {
-    digitalWrite(RELAY_CRANK, HIGH);
+
+  // Enable/disable DC/DC converter
+  if (_carMode == ECON_MODE) {
+    digitalWrite(RELAY_DCDC, HIGH);
+  } else if (_carMode == ELECTRIC_MODE) {
+    digitalWrite(RELAY_DCDC, LOW);
+  } else if (_carMode == SPORT_MODE) {
+    digitalWrite(RELAY_DCDC, HIGH);
   }
 
   // Send data if the send delay timer is overdue
+  char sendBuf[32];
   uint32_t now = millis();
-  if (now - lastFrameSend > FRAME_SEND_DELAY) {
-    lastFrameSend = now;
+  if (now - _lastFrameSend > FRAME_SEND_DELAY) {
+    _lastFrameSend = now;
     
     uint16_t cursor = 0;
 
@@ -209,6 +259,54 @@ void PH517Runner::sendOutputs(const DataOutput& outputs) {
     hdlc.frameDecode((const char*)  sendBuf, cursor);
 
   }
+}
 
+uint8_t PH517Runner::getModeFromSwitches(uint8_t switches) {
 
+  uint8_t mode = NO_MODE;
+  if (switches & 1) {
+    mode = REVERSE_MODE;
+  } else if ((switches>>1) & 1) {
+    mode = ECON_MODE;
+  } else if ((switches>>2) & 1) {
+    mode = ELECTRIC_MODE;
+  } else if ((switches>>3) & 1) {
+    mode = SPORT_MODE;
+  }
+
+  return mode;
+}
+
+/* Blink lights until mode button pressed */
+void PH517Runner::waitForMode() {
+
+  uint8_t mode;
+  uint8_t iSwitch = 0;
+  uint8_t steps = 0;
+  do {
+    // 5 Cases. 1, 2, 3, 4, then off.
+    switch (iSwitch) {
+      case 0: digitalWrite(BUTTON_LED_1, HIGH); break;
+      case 1: digitalWrite(BUTTON_LED_2, HIGH); break;
+      case 2: digitalWrite(BUTTON_LED_3, HIGH); break;
+      case 3: digitalWrite(BUTTON_LED_4, HIGH); break;
+      default: 
+        digitalWrite(BUTTON_LED_1, LOW);
+        digitalWrite(BUTTON_LED_2, LOW);
+        digitalWrite(BUTTON_LED_3, LOW);
+        digitalWrite(BUTTON_LED_4, LOW);
+        break;
+    }
+    // Change every 250ms
+    if (steps == 25) {
+      iSwitch = (iSwitch + 1) % 5;
+      steps = 0;
+    }
+    mode = getModeFromSwitches(_io.readModeSwitches());
+
+    steps++;
+    delay(10);
+  } while (mode == NO_MODE);
+
+  _carMode = mode;
 }
