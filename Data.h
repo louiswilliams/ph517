@@ -12,42 +12,42 @@
 
 // Battery data from SOC meter
 typedef struct {
-  uint16_t voltage; // x0.01V
-  uint16_t current; // x0.01A
-  uint16_t ampHours; // x0.1Ah
-  uint16_t stateOfCharge; // x0.1%
-  uint16_t timeToGo; // x1 min
-  uint16_t temp; // x1/256C
-  uint8_t currentSign; // 1 for positive, 0 for negative
-  uint8_t ampHourSign; // 1 for positive, 0 for negative
+  uint16_t voltage = 0; // x0.01V
+  uint16_t current = 0; // x0.01A
+  uint16_t ampHours = 0; // x0.1Ah
+  uint16_t stateOfCharge = 0; // x0.1%
+  uint16_t timeToGo = 0; // x1 min
+  uint16_t temp = 0; // x1/256C
+  uint8_t currentSign = 0; // 1 for positive, 0 for negative
+  uint8_t ampHourSign = 0; // 1 for positive, 0 for negative
 } BattData;
 // sizeof(BattData) = 14
 
 // CAN data from motor
 typedef struct {
-  uint16_t rpm; // x1
-  uint16_t rmsCurrent; // x10
-  uint16_t capVoltage; // x10
-  uint16_t statorFreq; // x1
-  uint8_t temp; // [0,240] - 40
-  uint8_t controllerTemp; // [0,240] - 40
+  uint16_t rpm = 0; // x1
+  uint16_t rmsCurrent = 0; // x10
+  uint16_t capVoltage = 0; // x10
+  uint16_t statorFreq = 0; // x1
+  uint8_t temp = 0; // [0,240] - 40
+  uint8_t controllerTemp = 0; // [0,240] - 40
 } MotorData;
 // sizeof(BattData) = 10
 
 // Engine data from Arduino Micro  
 typedef struct {
-  uint32_t rpm;
-  uint32_t pulses;
-  uint32_t timeOn;
+  uint32_t rpm = 0;
+  uint32_t pulses = 0;
+  uint32_t timeOn = 0;
 } EngineData;
 
 // Inputs
 class DataInput {
 public:
-  uint16_t throttle; // [0,1023]
-  uint16_t brake; // [0,1023]
-  uint16_t battTemp; // [0,1023]
-  uint16_t modeSwitches;
+  uint16_t throttle = 0; // [0,1023]
+  uint16_t brake = 0; // [0,1023]
+  uint16_t battTemp = 0; // [0,1023]
+  uint16_t modeSwitches = 0;
   BattData batt;
   MotorData motor;
   EngineData engine;

@@ -12,6 +12,12 @@
 #include "InputOutput.h"
 
 #define FRAME_SEND_DELAY 250
+#define DEBUG_PRINT_DELAY 2000
+
+#define CONST_ENGINE_PERCENT 1.0
+#define CONST_MOTOR_PERCENT 1.0
+#define CONST_REGEN_PERCENT 0.0
+
 
 class PH517Runner {
 public:
@@ -33,6 +39,7 @@ public:
 private:
   // Keep track of last frame sent to Uno
   uint32_t lastFrameSend; 
+  uint32_t lastDebugPrint; 
   InputOutput _io;  
   DataInput _inputs;
   DataOutput _outputs;

@@ -79,7 +79,7 @@ bool InputOutput::setup() {
 
 // Send engine acceleration value between 0 and 255
 void InputOutput::sendEngineAccel(uint8_t value) {
-  int mapped = map(value, 9, 255, ENGINE_SERVO_MIN, ENGINE_SERVO_MAX);
+  int mapped = map(value, 0, 255, ENGINE_SERVO_MIN, ENGINE_SERVO_MAX);
   _engineServo.write(mapped);
 }
 
@@ -106,8 +106,6 @@ void InputOutput::getMotorData(MotorData& motorData) {
     _can.readMsgBuf(&canBufLen, canBuf);
     uint32_t id = _can.getCanId();
 
-    Serial.println("CAN available");
-
     // Parse data based on which address it came from
     if (id == CAN_ADDR1) {
       motorData.rpm = canBuf[1] + (canBuf[0] << 8);
@@ -133,8 +131,8 @@ void InputOutput::getMotorData(MotorData& motorData) {
       motorData.statorFreq = canBuf[1] + (canBuf[0] << 8);
     } 
     else {
-      Serial.print("Received message from unknown ID: ");
-      Serial.println(id, HEX);
+      // Serial.print("Received message from unknown ID: ");
+      // Serial.println(id, HEX);
     }
   }
 }

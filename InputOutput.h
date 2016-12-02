@@ -73,7 +73,7 @@
 // Extrema
 #define ENGINE_SERVO_MIN 129
 #define ENGINE_SERVO_MAX 36
-#define THROTTLE_MIN 875
+#define THROTTLE_MIN 863
 #define THROTTLE_MAX 560
 
 // BT GATT Characteristic indexes

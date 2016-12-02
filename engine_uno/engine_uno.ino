@@ -110,13 +110,22 @@ void setup() {
 
   ssMega.begin(9600);
 
+  // Add indicator LED
+  pinMode(13, OUTPUT);
+
+  digitalWrite(13, HIGH);
   btSetupOkay = setUpBluefruit();
   if (!btSetupOkay) {
     PRINTLN(F("Failed to setup BT module"));
+    while(1) {
+      digitalWrite(13, LOW);
+      delay(1000);
+      digitalWrite(13, HIGH);
+      delay(1000);
+    }
   }
+  digitalWrite(13, LOW);
 
-  // Add indicator LED
-  pinMode(13, OUTPUT);
 
   // Set pullup resistors for when phototransistor is not closed
   pinMode(SparkPullup, INPUT);

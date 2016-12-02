@@ -22,6 +22,40 @@ bool PH517Runner::step() {
   // Send OutputData to hardware
   sendOutputs(_outputs);
 
+  // Send data if the send delay timer is overdue
+  uint32_t now = millis();
+  if (now - lastDebugPrint > DEBUG_PRINT_DELAY) {
+    lastDebugPrint = now;
+
+    Serial.println("\nMOTOR");
+    Serial.print("  rpm: ");
+    Serial.println(_inputs.motor.rpm, DEC); // x1
+    Serial.print("  rmsCurrent: ");
+    Serial.println(_inputs.motor.rmsCurrent / 10.0, 1); // x10
+    Serial.print("  capVoltage: ");
+    Serial.println(_inputs.motor.capVoltage / 10.0, 1); // x10
+    Serial.print("  statorFreq: ");
+    Serial.println(_inputs.motor.statorFreq, DEC); // x1
+    Serial.print("  temp: ");
+    Serial.println(_inputs.motor.temp - 40, DEC); // [0,240] - 40
+    Serial.print("  controllerTemp: ");
+    Serial.println(_inputs.motor.controllerTemp - 40, DEC); // [0,240] - 40
+
+    Serial.println("PEDALS");
+    Serial.print("  throttle: ");
+    Serial.println(_inputs.throttle, DEC);
+    Serial.print("  brake: ");
+    Serial.println(_inputs.brake, DEC);
+
+    Serial.println("ENGINE");
+    Serial.print("  rpm: ");
+    Serial.println(_inputs.engine.rpm, DEC);
+    Serial.print("  pulses: ");
+    Serial.println(_inputs.engine.pulses, DEC);
+    Serial.print("  timeOn: " );
+    Serial.println(_inputs.engine.timeOn, DEC); 
+  }  
+
   delay(10);
   return true;
 }
@@ -32,13 +66,6 @@ void PH517Runner::collectInputs(DataInput& inputs) {
   inputs.brake = _io.readBrake();
   inputs.battTemp = _io.readBattTemp();
   inputs.modeSwitches = _io.readModeSwitches();
-
-  // Serial.println("--Inputs--");
-  // Serial.println(" Throttle: " + inputs.throttle);
-  // Serial.println(" Brake: " + inputs.brake);
-  // Serial.println(" modeSwitches: " + inputs.modeSwitches);  
-  // Serial.println(" engine.rpm: " + inputs.engine.rpm);  
-  // Serial.println(" engine.fuelRate: " + inputs.engine.fuelRate);  
 
   _io.readEngineData();
   _io.getBattData(inputs.batt);
@@ -52,8 +79,14 @@ void PH517Runner::engineDataReceived(const uint8_t* data, uint16_t length) {
 
 // Process inputs and return outputs from control block
 void PH517Runner::processInputs(const DataInput& inputs, DataOutput& outputs) {
-  outputs.engineServo = map(inputs.throttle, THROTTLE_MIN, THROTTLE_MAX, 0, 255);
-  outputs.motorAccel = map(inputs.throttle, THROTTLE_MIN, THROTTLE_MAX, 0, 4095);
+
+  outputs.engineServo = constrain(map(inputs.throttle, THROTTLE_MIN, THROTTLE_MAX, 0, 255), 0, 255);
+  outputs.motorAccel = constrain(map(inputs.throttle, THROTTLE_MIN, THROTTLE_MAX, 0, 4095), 0, 4095);
+  outputs.motorRegen = constrain(map(inputs.throttle, THROTTLE_MIN, THROTTLE_MAX, 0, 4095), 0, 4095);
+
+  outputs.engineServo *= CONST_ENGINE_PERCENT;
+  outputs.motorAccel *= CONST_MOTOR_PERCENT;
+  outputs.motorRegen *= CONST_REGEN_PERCENT;
 
   // White
   if (inputs.isSwitchPressed(1)) {

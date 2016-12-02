@@ -5,7 +5,7 @@
 #include "InputOutput.h"
 #include "PH517Runner.h"
 
-InputOutput io(PH_DEBUG);
+InputOutput io(PH_DEBUG); 
 PH517Runner runner(io);
 
 // Define HDLC object and handler functions
