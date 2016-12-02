@@ -149,25 +149,25 @@ void PH517Runner::processInputs(const DataInput& inputs, DataOutput& outputs) {
   // Reverse mode. Electic only //
   if (_carMode == REVERSE_MODE) {
     outputs.motorAccel = motorAccel;
-    outputs.engineAccel = 0;
+    outputs.engineServo = 0;
     outputs.motorRegen = 0;
 
   // Econ mode. Engine 100%, motorRegen 50%, brakeRegen %100
   } else if (_carMode == ECON_MODE) {
     outputs.motorAccel = 0;
-    outputs.engineAccel = engineAccel;
+    outputs.engineServo = engineAccel;
     outputs.motorRegen = max(0.5*throttleRegen, brakeRegen);
 
   // Only electric
   } else if (_carMode == ELECTRIC_MODE) {
     outputs.motorAccel = motorAccel;
-    outputs.engineAccel = 0;
-    outputs.motorRegen = brakeRegen
+    outputs.engineServo = 0;
+    outputs.motorRegen = brakeRegen;
 
   // Both electric and engine
   } else if (_carMode == SPORT_MODE) {
     outputs.motorAccel = motorAccel;
-    outputs.engineAccel = engineAccel;
+    outputs.engineServo = engineAccel;
     outputs.motorRegen = brakeRegen;
   }
 }
